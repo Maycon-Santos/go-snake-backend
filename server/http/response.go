@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-type ResponseBody struct {
+type responseConfig struct {
 	Success bool         `json:"success"`
 	Type    responseType `json:"type,omitempty"`
 	Message string       `json:"message,omitempty"`
@@ -21,7 +21,7 @@ const (
 	TYPE_USERNAME_EXISTS        = responseType("USERNAME_EXISTS")
 )
 
-func makeResponse(ctx context.Context, writer http.ResponseWriter, response ResponseBody) error {
+func makeResponse(ctx context.Context, writer http.ResponseWriter, response responseConfig) error {
 	resp, err := json.Marshal(response)
 	if err != nil {
 		return err

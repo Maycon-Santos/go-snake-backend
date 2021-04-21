@@ -47,7 +47,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		}
 
 		if usernameExists {
-			responseBody := ResponseBody{
+			responseBody := responseConfig{
 				Success: false,
 				Type:    TYPE_USERNAME_EXISTS,
 				Message: "username already in use",
@@ -81,7 +81,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		responseBody := ResponseBody{
+		responseBody := responseConfig{
 			Success: true,
 			Result: signUpResponseResult{
 				AccessToken: token.AccessToken,

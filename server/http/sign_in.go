@@ -46,7 +46,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if account == nil {
-			responseBody := ResponseBody{
+			responseBody := responseConfig{
 				Success: false,
 				Type:    TYPE_ACCOUNT_NOT_FOUND,
 				Message: "account not found",
@@ -60,7 +60,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if err = auth.CompareHashAndPassword(account.Password, requestBody.Password); err != nil {
-			responseBody := ResponseBody{
+			responseBody := responseConfig{
 				Success: false,
 				Type:    TYPE_ACCOUNT_PASSWORD_WRONG,
 				Message: "wrong password",
@@ -82,7 +82,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		responseBody := ResponseBody{
+		responseBody := responseConfig{
 			Success: false,
 			Result: signInResponseResult{
 				AccessToken: token.AccessToken,

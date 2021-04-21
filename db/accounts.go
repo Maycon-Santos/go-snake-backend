@@ -6,7 +6,13 @@ import (
 	"fmt"
 )
 
-type AccountsRepository struct {
+type AccountsRepository interface {
+	CheckUsernameExists(ctx context.Context, username string) (bool, error)
+	Get(ctx context.Context, username string) (*Account, error)
+	Save(ctx context.Context, username string, password string) (string, error)
+}
+
+type accountsRepository struct {
 	dbConn *sql.DB
 }
 
@@ -17,10 +23,10 @@ type Account struct {
 }
 
 func NewAccountsRepository(dbConn *sql.DB) AccountsRepository {
-	return AccountsRepository{dbConn}
+	return accountsRepository{dbConn}
 }
 
-func (ac AccountsRepository) CheckUsernameExists(ctx context.Context, username string) (bool, error) {
+func (ac accountsRepository) CheckUsernameExists(ctx context.Context, username string) (bool, error) {
 	row := ac.dbConn.QueryRowContext(
 		ctx,
 		"SELECT count(username) FROM accounts WHERE username=$1",
@@ -45,7 +51,7 @@ func (ac AccountsRepository) CheckUsernameExists(ctx context.Context, username s
 	return false, nil
 }
 
-func (ac AccountsRepository) Get(ctx context.Context, username string) (*Account, error) {
+func (ac accountsRepository) Get(ctx context.Context, username string) (*Account, error) {
 	row := ac.dbConn.QueryRowContext(
 		ctx,
 		"SELECT id, username, password FROM accounts WHERE username=$1",
@@ -66,7 +72,7 @@ func (ac AccountsRepository) Get(ctx context.Context, username string) (*Account
 	return &account, nil
 }
 
-func (ac AccountsRepository) Save(ctx context.Context, username string, password string) (string, error) {
+func (ac accountsRepository) Save(ctx context.Context, username string, password string) (string, error) {
 	stmt, err := ac.dbConn.PrepareContext(ctx, "INSERT INTO accounts (username, password) VALUES ($1, $2) RETURNING id")
 	if err != nil {
 		return "", err

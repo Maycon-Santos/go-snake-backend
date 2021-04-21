@@ -5,13 +5,18 @@ import (
 	"reflect"
 )
 
-type Container map[reflect.Type]reflect.Value
-
-func New() Container {
-	return make(Container)
+type Container interface {
+	Inject(dependencies ...interface{}) error
+	Retrieve(dependenciesAbstraction ...interface{}) error
 }
 
-func (c Container) Inject(dependencies ...interface{}) error {
+type container map[reflect.Type]reflect.Value
+
+func New() Container {
+	return make(container)
+}
+
+func (c container) Inject(dependencies ...interface{}) error {
 	for i, dependency := range dependencies {
 		dependencyType := reflect.TypeOf(dependency)
 		if dependencyType == nil {
@@ -31,7 +36,7 @@ func (c Container) Inject(dependencies ...interface{}) error {
 	return nil
 }
 
-func (c Container) Retrieve(dependenciesAbstraction ...interface{}) error {
+func (c container) Retrieve(dependenciesAbstraction ...interface{}) error {
 	for i, dependencyAbstraction := range dependenciesAbstraction {
 		abstractionType := reflect.TypeOf(dependencyAbstraction)
 		if abstractionType == nil {
