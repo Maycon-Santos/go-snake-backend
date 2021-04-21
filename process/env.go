@@ -1,13 +1,32 @@
 package process
 
 import (
+	"time"
+
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
+type Database struct {
+	Driver       string        `mapstructure:"database_driver"`
+	ConnURI      string        `mapstructure:"database_conn_uri"`
+	MaxLifetime  time.Duration `mapstructure:"database_conn_max_lifetime"`
+	IdleConns    uint          `mapstructure:"database_max_idle_conns"`
+	MaxOpenConns uint          `mapstructure:"database_max_open_conns"`
+}
+
+type JWT struct {
+	Secret           string        `mapstructure:"jwt_token_secret"`
+	ExpiresIn        time.Duration `mapstructure:"jwt_expires_in"`
+	RefreshExpiresIn time.Duration `mapstructure:"jwt_refresh_expires_in"`
+}
+
 type Env struct {
-	AppName    string `mapstructure:"app_name"`
-	ServerPort int    `mapstructure:"server_port"`
+	AppName      string   `mapstructure:"app_name"`
+	ServerPort   int      `mapstructure:"server_port"`
+	RedisAddress string   `mapstructure:"redis_address"`
+	JWT          JWT      `mapstructure:",squash"`
+	Database     Database `mapstructure:",squash"`
 }
 
 func NewEnv() (*Env, error) {
