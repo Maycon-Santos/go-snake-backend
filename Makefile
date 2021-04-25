@@ -9,6 +9,10 @@ install-modd-local:
 	@go get -v github.com/cortesi/modd/cmd/modd 2>/dev/null || true
 	@echo modd installed
 
+test-coverage-local:
+	@go test ./... -coverprofile=coverage.out
+	@go tool cover -html=coverage.out -o coverage.html
+
 setup-local:
 	@go mod vendor
 
@@ -17,6 +21,14 @@ setup-dev-local: setup-local install-modd-local
 
 run-dev-local:
 	@modd -f ./cmd/server/modd.conf
+
+test-coverage:
+	@docker run -ti --rm \
+		-v "$(PWD)":/usr/src/app \
+		--name $(DOCKER_IMAGE_NAME)-coverage \
+		$(DOCKER_IMAGE_NAME) \
+		go test ./... -coverprofile=coverage.out && \
+    go tool cover -html=coverage.out -o coverage.html
 
 setup-dev:
 	@echo $(DOCKER_IMAGE_NAME)

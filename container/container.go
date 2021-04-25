@@ -19,13 +19,17 @@ func New() Container {
 func (c container) Inject(dependencies ...interface{}) error {
 	for i, dependency := range dependencies {
 		dependencyType := reflect.TypeOf(dependency)
-		if dependencyType == nil {
-			return fmt.Errorf("container: dependency %d is %v", i, dependencyType)
-		}
-
 		dependencyValue := reflect.ValueOf(dependency)
 
+		if dependencyType == nil {
+			return fmt.Errorf("container: dependency %d is <nil>", i)
+		}
+
 		if dependencyType.Kind() == reflect.Ptr {
+			if dependencyValue.IsNil() {
+				return fmt.Errorf("container: dependency %v is a <nil> value", dependencyType)
+			}
+
 			c[dependencyType.Elem()] = dependencyValue.Elem()
 			continue
 		}
@@ -39,19 +43,25 @@ func (c container) Inject(dependencies ...interface{}) error {
 func (c container) Retrieve(dependenciesAbstraction ...interface{}) error {
 	for i, dependencyAbstraction := range dependenciesAbstraction {
 		abstractionType := reflect.TypeOf(dependencyAbstraction)
+		abstractionValue := reflect.ValueOf(dependencyAbstraction)
+
 		if abstractionType == nil {
-			return fmt.Errorf("container: dependency abstraction %d is %v", i, abstractionType)
+			return fmt.Errorf("container: dependency abstraction %d is <nil>", i)
 		}
 
 		if abstractionType.Kind() == reflect.Ptr {
+			if abstractionValue.IsNil() {
+				return fmt.Errorf("container: dependency abstraction %v is a <nil> value", abstractionType)
+			}
+
 			abstractionElem := abstractionType.Elem()
 
 			if dependency, ok := c[abstractionElem]; ok {
-				reflect.ValueOf(dependencyAbstraction).Elem().Set(dependency)
+				abstractionValue.Elem().Set(dependency)
 				continue
 			}
 
-			return fmt.Errorf("container: dependency %s is not implemented", abstractionElem)
+			return fmt.Errorf("container: dependency %s has not been implemented", abstractionElem)
 		}
 
 		return fmt.Errorf("container: dependency abstraction %v is not a pointer", abstractionType)

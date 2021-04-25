@@ -1,2 +1,5 @@
 /vendor
 .env
+
+# Tests
+/coverage.*
