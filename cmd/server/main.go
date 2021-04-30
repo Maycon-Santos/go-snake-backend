@@ -30,11 +30,14 @@ func main() {
 
 	dependenciesContainer := container.New()
 
-	dependenciesContainer.Inject(
+	err = dependenciesContainer.Inject(
 		env,
 		cache,
-		accountsRepository,
+		&accountsRepository,
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = server.Listen(dependenciesContainer)
 	if err != nil {

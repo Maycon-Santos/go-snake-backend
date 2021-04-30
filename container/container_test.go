@@ -19,19 +19,26 @@ func Test_container_Inject(t *testing.T) {
 		dep2 := fakeDependency2(1)
 		dep3 := fakeDependency3(true)
 
-		err := instance.Inject(dep1, &dep2, dep3)
+		err := instance.Inject(&dep1, &dep2, &dep3)
 		assert.NoError(t, err)
 	})
 
 	t.Run("should return an error when receive nil", func(t *testing.T) {
-		err := instance.Inject(nil, fakeDependency3(false))
+		dep3 := fakeDependency3(false)
+		err := instance.Inject(nil, &dep3)
 		assert.EqualError(t, err, "container: dependency 0 is <nil>")
 	})
 
 	t.Run("should return an error when receive a dependency without initial value", func(t *testing.T) {
 		var dep *fakeDependency3
-		err := instance.Inject(fakeDependency2(1), dep)
+		dep2 := fakeDependency2(1)
+		err := instance.Inject(&dep2, dep)
 		assert.EqualError(t, err, "container: dependency *bool is a <nil> value")
+	})
+
+	t.Run("should return an error when receive a value (not pointer)", func(t *testing.T) {
+		err := instance.Inject(fakeDependency2(1))
+		assert.EqualError(t, err, "container: dependency int is not a pointer")
 	})
 }
 
@@ -41,7 +48,7 @@ func Test_container_Retrieve(t *testing.T) {
 	dep3 := fakeDependency3(true)
 	instance := New()
 
-	instance.Inject(dep1, dep2, &dep3)
+	instance.Inject(&dep1, &dep2, &dep3)
 
 	t.Run("should retrieve dependencies without errors", func(t *testing.T) {
 		var (

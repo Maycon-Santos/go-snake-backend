@@ -34,7 +34,7 @@ func (c container) Inject(dependencies ...interface{}) error {
 			continue
 		}
 
-		c[dependencyType] = dependencyValue
+		return fmt.Errorf("container: dependency %v is not a pointer", dependencyType)
 	}
 
 	return nil
