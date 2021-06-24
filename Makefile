@@ -13,7 +13,7 @@ test-coverage-local:
 	@go test ./... -coverprofile=coverage.out
 	@go tool cover -html=coverage.out -o coverage.html
 
-setup-local:
+setup-local: install-modd-local
 	@go mod vendor
 
 setup-dev-local: setup-local install-modd-local
@@ -29,6 +29,13 @@ test-coverage:
 		$(DOCKER_IMAGE_NAME) \
 		go test ./... -coverprofile=coverage.out && \
     go tool cover -html=coverage.out -o coverage.html
+
+mock:
+	@docker run -ti --rm \
+		-v "$(PWD)":/usr/src/app \
+		--name $(DOCKER_IMAGE_NAME)-coverage \
+		$(DOCKER_IMAGE_NAME) \
+		mockgen -source=$(source) -destination=$(shell echo $(source) | sed 's/.go$$/_mock.go/') -package=$(package)
 
 setup-dev:
 	@echo $(DOCKER_IMAGE_NAME)
