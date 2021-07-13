@@ -72,7 +72,13 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 			return
 		}
 
-		token, err := auth.CreateToken(env, accountID)
+		token, err := auth.CreateToken(
+			env.JWT.ExpiresIn,
+			env.JWT.RefreshExpiresIn,
+			env.JWT.Secret,
+			env.JWT.RefreshSecret,
+			accountID,
+		)
 		if err != nil {
 			handleError(request.Context(), err)
 		}

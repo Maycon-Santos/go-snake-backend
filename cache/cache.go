@@ -7,11 +7,16 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type Client struct {
+type Client interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+}
+
+type client struct {
 	client *redis.Client
 }
 
-func NewClient(ctx context.Context, address string) (*Client, error) {
+func NewClient(ctx context.Context, address string) (Client, error) {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: address,
 	})
@@ -21,10 +26,10 @@ func NewClient(ctx context.Context, address string) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{client: redisClient}, nil
+	return client{redisClient}, nil
 }
 
-func (c Client) Get(ctx context.Context, key string) (string, error) {
+func (c client) Get(ctx context.Context, key string) (string, error) {
 	value, err := c.client.Get(ctx, key).Result()
 	if err != nil && err != redis.Nil {
 		return "", err
@@ -33,7 +38,7 @@ func (c Client) Get(ctx context.Context, key string) (string, error) {
 	return value, nil
 }
 
-func (c Client) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (c client) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	status := c.client.Set(ctx, key, value, expiration)
 	err := status.Err()
 	if err != nil {

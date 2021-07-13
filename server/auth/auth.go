@@ -2,12 +2,10 @@ package auth
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/Maycon-Santos/go-snake-backend/cache"
-	"github.com/Maycon-Santos/go-snake-backend/process"
 	"github.com/Maycon-Santos/go-snake-backend/uuid"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
@@ -31,7 +29,13 @@ func GeneratePasswordHash(password string) (string, error) {
 	return string(encrypted), err
 }
 
-func CreateToken(env process.Env, accountID string) (*TokenDetails, error) {
+func CreateToken(
+	expiresIn time.Duration,
+	refreshExpiresIn time.Duration,
+	secret string,
+	refreshSecret string,
+	accountID string,
+) (*TokenDetails, error) {
 	var err error
 
 	accessUuid, err := uuid.Generate()
@@ -45,10 +49,10 @@ func CreateToken(env process.Env, accountID string) (*TokenDetails, error) {
 	}
 
 	tokenDetails := &TokenDetails{}
-	tokenDetails.AtExpires = time.Now().Add(env.JWT.ExpiresIn).Unix()
+	tokenDetails.AtExpires = time.Now().Add(expiresIn).Unix()
 	tokenDetails.AccessUuid = *accessUuid
 
-	tokenDetails.RtExpires = time.Now().Add(env.JWT.RefreshExpiresIn).Unix()
+	tokenDetails.RtExpires = time.Now().Add(refreshExpiresIn).Unix()
 	tokenDetails.RefreshUuid = *refreshUuid
 
 	atClaims := jwt.MapClaims{}
@@ -58,7 +62,7 @@ func CreateToken(env process.Env, accountID string) (*TokenDetails, error) {
 	atClaims["exp"] = tokenDetails.AtExpires
 
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	if tokenDetails.AccessToken, err = at.SignedString([]byte(env.JWT.Secret)); err != nil {
+	if tokenDetails.AccessToken, err = at.SignedString([]byte(secret)); err != nil {
 		return nil, err
 	}
 
@@ -68,7 +72,7 @@ func CreateToken(env process.Env, accountID string) (*TokenDetails, error) {
 	rtClaims["exp"] = tokenDetails.RtExpires
 
 	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
-	tokenDetails.RefreshToken, err = rt.SignedString([]byte(os.Getenv("REFRESH_SECRET")))
+	tokenDetails.RefreshToken, err = rt.SignedString([]byte(refreshSecret))
 	if err != nil {
 		return nil, err
 	}

@@ -10,9 +10,9 @@ import (
 func newRoutes(container container.Container) *httprouter.Router {
 	router := httprouter.New()
 
-	router.POST("/signin", http.SignInHandler(container))
-	router.POST("/signup", http.SignUpHandler(container))
-	router.GET("/room", ws.Room)
+	router.POST("/v1/signin", http.SignInHandler(container))
+	router.POST("/v1/signup", http.SignUpHandler(container))
+	router.GET("/v1/room", ws.Room)
 
 	return router
 }

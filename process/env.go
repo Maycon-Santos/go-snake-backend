@@ -17,6 +17,7 @@ type Database struct {
 
 type JWT struct {
 	Secret           string        `mapstructure:"jwt_token_secret"`
+	RefreshSecret    string        `mapstructure:"jwt_refresh_secret"`
 	ExpiresIn        time.Duration `mapstructure:"jwt_expires_in"`
 	RefreshExpiresIn time.Duration `mapstructure:"jwt_refresh_expires_in"`
 }
