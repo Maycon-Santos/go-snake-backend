@@ -3,6 +3,7 @@ module github.com/Maycon-Santos/go-snake-backend
 go 1.16
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-redis/redis/v8 v8.8.2
 	github.com/golang/mock v1.6.0

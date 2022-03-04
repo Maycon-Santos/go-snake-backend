@@ -52,7 +52,7 @@ run-dev:
     -p $(SERVER_PORT):$(SERVER_PORT) \
 		--name $(DOCKER_IMAGE_NAME)-server \
 		$(DOCKER_IMAGE_NAME) \
-		modd -f ./cmd/server/modd.conf
+		redis-server && modd -f ./cmd/server/modd.conf
 
 migrate-up:
 	@docker run \

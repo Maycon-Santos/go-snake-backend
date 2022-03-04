@@ -10,7 +10,7 @@ func Test_makeResponse(t *testing.T) {
 	type args struct {
 		ctx      context.Context
 		writer   http.ResponseWriter
-		response responseConfig
+		response responseSchema
 	}
 	tests := []struct {
 		name    string

@@ -22,8 +22,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	defer dbConn.Close()
+
 	accountsRepository := db.NewAccountsRepository(dbConn)
-	cache, err := cache.NewClient(context.Background(), env.RedisAddress)
+	cacheClient, err := cache.NewClient(context.Background(), env.RedisAddress)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func main() {
 
 	err = dependenciesContainer.Inject(
 		env,
-		cache,
+		cacheClient,
 		&accountsRepository,
 	)
 	if err != nil {

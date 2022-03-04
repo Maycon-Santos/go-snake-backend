@@ -40,7 +40,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		var requestBody signInRequestBody
 
 		if err := json.NewDecoder(request.Body).Decode(&requestBody); err != nil {
-			responseBody := responseConfig{
+			responseBody := responseSchema{
 				Status:  http.StatusUnprocessableEntity,
 				Success: false,
 				Type:    TYPE_PAYLOAD_INVALID,
@@ -55,7 +55,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if responseType, err := validateFields(requestBody); err != nil {
-			responseBody := responseConfig{
+			responseBody := responseSchema{
 				Status:  http.StatusForbidden,
 				Success: false,
 				Type:    responseType,
@@ -76,7 +76,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if account == nil {
-			responseBody := responseConfig{
+			responseBody := responseSchema{
 				Success: false,
 				Type:    TYPE_ACCOUNT_NOT_FOUND,
 				Message: "account not found",
@@ -90,7 +90,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if err = auth.CompareHashAndPassword(account.Password, requestBody.Password); err != nil {
-			responseBody := responseConfig{
+			responseBody := responseSchema{
 				Status:  http.StatusForbidden,
 				Success: false,
 				Type:    TYPE_ACCOUNT_PASSWORD_WRONG,
@@ -119,7 +119,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		responseBody := responseConfig{
+		responseBody := responseSchema{
 			Success: true,
 			Result: signInResponseResult{
 				AccessToken: token.AccessToken,

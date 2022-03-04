@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-type responseConfig struct {
+type responseSchema struct {
 	Status  int          `json:"-"`
 	Success bool         `json:"success"`
 	Type    responseType `json:"type,omitempty"`
@@ -30,7 +30,7 @@ const (
 	TYPE_ABOVE_LEN_PASSWORD     = responseType("ABOVE_LEN_PASSWORD")
 )
 
-func makeResponse(ctx context.Context, writer http.ResponseWriter, response responseConfig) error {
+func makeResponse(ctx context.Context, writer http.ResponseWriter, response responseSchema) error {
 	resp, err := json.Marshal(response)
 	if err != nil {
 		return err
