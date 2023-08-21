@@ -7,7 +7,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewConnection(env process.Env) (*sql.DB, error) {
+func NewConnection(env *process.Env) (*sql.DB, error) {
 	db, err := sql.Open(env.Database.Driver, env.Database.ConnURI)
 	if err != nil {
 		return nil, err

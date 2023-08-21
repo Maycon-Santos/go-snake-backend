@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dbConn, err := db.NewConnection(*env)
+	dbConn, err := db.NewConnection(env)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func main() {
 
 	err = dependenciesContainer.Inject(
 		env,
-		cache,
+		&cache,
 		&accountsRepository,
 	)
 	if err != nil {

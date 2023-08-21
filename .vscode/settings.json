@@ -1,5 +1,9 @@
 {
   "cSpell.words": [
+    "gomock",
+    "httprouter",
+    "sqlmock",
+    "testutils",
     "upgrader"
   ]
 }

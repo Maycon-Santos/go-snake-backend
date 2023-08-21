@@ -18,8 +18,8 @@ type signUpRequestBody struct {
 }
 
 type signUpResponseResult struct {
-	AccessToken string `json:"access_token"`
-	RefresToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func SignUpHandler(container container.Container) httprouter.Handle {
@@ -34,9 +34,41 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, _ httprouter.Params) {
 		var requestBody signUpRequestBody
 
-		err := json.NewDecoder(request.Body).Decode(&requestBody)
-		if err != nil {
-			handleError(request.Context(), err)
+		if err := json.NewDecoder(request.Body).Decode(&requestBody); err != nil {
+			responseBody := responseConfig{
+				Header: responseHeader{
+					Status: http.StatusUnprocessableEntity,
+				},
+				Body: responseBody{
+					Success: false,
+					Type:    TYPE_PAYLOAD_INVALID,
+					Message: "playload is invalid",
+				},
+			}
+
+			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+				handleError(request.Context(), err)
+			}
+
+			return
+		}
+
+		if responseType, err := validateSignUpFields(requestBody); err != nil {
+			responseBody := responseConfig{
+				Header: responseHeader{
+					Status: http.StatusForbidden,
+				},
+				Body: responseBody{
+					Success: false,
+					Type:    responseType,
+					Message: err.Error(),
+				},
+			}
+
+			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+				handleError(request.Context(), err)
+			}
+
 			return
 		}
 
@@ -48,9 +80,14 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 
 		if usernameExists {
 			responseBody := responseConfig{
-				Success: false,
-				Type:    TYPE_USERNAME_EXISTS,
-				Message: "username already in use",
+				Header: responseHeader{
+					Status: http.StatusUnauthorized,
+				},
+				Body: responseBody{
+					Success: false,
+					Type:    TYPE_ACCOUNT_USERNAME_EXISTS,
+					Message: "username already in use",
+				},
 			}
 
 			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
@@ -72,7 +109,13 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 			return
 		}
 
-		token, err := auth.CreateToken(env, accountID)
+		token, err := auth.CreateToken(
+			env.JWT.ExpiresIn,
+			env.JWT.RefreshExpiresIn,
+			env.JWT.Secret,
+			env.JWT.RefreshSecret,
+			accountID,
+		)
 		if err != nil {
 			handleError(request.Context(), err)
 		}
@@ -82,14 +125,31 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		}
 
 		responseBody := responseConfig{
-			Success: true,
-			Result: signUpResponseResult{
-				AccessToken: token.AccessToken,
-				RefresToken: token.RefreshToken,
+			Header: responseHeader{
+				Status: http.StatusCreated,
+			},
+			Body: responseBody{
+				Success: true,
+				Result: signUpResponseResult{
+					AccessToken:  token.AccessToken,
+					RefreshToken: token.RefreshToken,
+				},
 			},
 		}
 		if err := makeResponse(request.Context(), writer, responseBody); err != nil {
 			handleError(request.Context(), err)
 		}
 	}
+}
+
+func validateSignUpFields(requestBody signUpRequestBody) (responseType, error) {
+	if errType, err := usernameValidator.Validate(requestBody.Username); err != nil {
+		return usernameResponseErrors[errType], err
+	}
+
+	if errType, err := passwordValidator.Validate(requestBody.Password); err != nil {
+		return passwordResponseErrors[errType], err
+	}
+
+	return TYPE_UNKNOWN, nil
 }
