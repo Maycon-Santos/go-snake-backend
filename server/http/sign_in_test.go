@@ -20,8 +20,8 @@ import (
 func TestSignInHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	dependenciesContainer := container.New()
-	mockCacheClient := cache.NewMockClient(ctrl)
-	mockAccountsRepository := db.NewMockAccountsRepository(ctrl)
+	cacheClient := cache.NewMockClient(ctrl)
+	accountsRepository := db.NewMockAccountsRepository(ctrl)
 	env := &process.Env{
 		JWT: process.JWT{
 			ExpiresIn:        time.Duration(time.Second * 60),
@@ -30,11 +30,6 @@ func TestSignInHandler(t *testing.T) {
 			RefreshSecret:    "refresh_secret",
 		},
 	}
-
-	var (
-		cacheClient        cache.Client          = mockCacheClient
-		accountsRepository db.AccountsRepository = mockAccountsRepository
-	)
 
 	dependenciesContainer.Inject(&cacheClient, &accountsRepository, env)
 
@@ -51,13 +46,13 @@ func TestSignInHandler(t *testing.T) {
 			Password: "123456",
 		})
 
-		mockAccountsRepository.EXPECT().Get(gomock.Any(), gomock.Eq("michael")).Return(&db.Account{
+		accountsRepository.EXPECT().Get(gomock.Any(), gomock.Eq("michael")).Return(&db.Account{
 			ID:       "1",
 			UserName: "michael",
 			Password: passwordHash,
 		}, nil)
 
-		mockCacheClient.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		cacheClient.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 
 		resRecorder, _ := test_utils.DoRequest("POST", "/v1/signin", bytes.NewBuffer(reqBody), signInHandler)
 
@@ -83,7 +78,7 @@ func TestSignInHandler(t *testing.T) {
 			Password: "654321",
 		})
 
-		mockAccountsRepository.EXPECT().Get(gomock.Any(), gomock.Eq("michael")).Return(&db.Account{
+		accountsRepository.EXPECT().Get(gomock.Any(), gomock.Eq("michael")).Return(&db.Account{
 			ID:       "1",
 			UserName: "michael",
 			Password: passwordHash,
@@ -113,7 +108,7 @@ func TestSignInHandler(t *testing.T) {
 			Password: "123456",
 		})
 
-		mockAccountsRepository.EXPECT().Get(gomock.Any(), gomock.Eq("michael")).Return(nil, nil)
+		accountsRepository.EXPECT().Get(gomock.Any(), gomock.Eq("michael")).Return(nil, nil)
 
 		resRecorder, _ := test_utils.DoRequest("POST", "/v1/signin", bytes.NewBuffer(reqBody), signInHandler)
 

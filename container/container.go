@@ -61,6 +61,10 @@ func (c container) Retrieve(dependenciesAbstraction ...interface{}) error {
 				continue
 			}
 
+			if retrieveHard(c, abstractionValue) {
+				continue
+			}
+
 			return fmt.Errorf("container: dependency %s has not been implemented", abstractionElem)
 		}
 
@@ -68,4 +72,22 @@ func (c container) Retrieve(dependenciesAbstraction ...interface{}) error {
 	}
 
 	return nil
+}
+
+func retrieveHard(c container, abstractionValue reflect.Value) bool {
+	for _, dependency := range c {
+		found := func() bool {
+			defer func() {
+				recover()
+			}()
+			abstractionValue.Elem().Set(dependency)
+			return true
+		}()
+
+		if found {
+			return true
+		}
+	}
+
+	return false
 }

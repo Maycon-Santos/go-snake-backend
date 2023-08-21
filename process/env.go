@@ -1,8 +1,10 @@
 package process
 
 import (
+	"path/filepath"
 	"time"
 
+	"github.com/Maycon-Santos/go-snake-backend/internal/projectpath"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
@@ -33,7 +35,7 @@ type Env struct {
 func NewEnv() (*Env, error) {
 	env := &Env{}
 
-	defaultEnvs, err := godotenv.Read(".env.sample")
+	defaultEnvs, err := godotenv.Read(filepath.Join(projectpath.Root, ".env.sample"))
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +45,7 @@ func NewEnv() (*Env, error) {
 	}
 
 	viper.SetConfigType("env")
-	viper.SetConfigFile(".env")
+	viper.SetConfigFile(filepath.Join(projectpath.Root, ".env"))
 	viper.AutomaticEnv()
 
 	_ = viper.ReadInConfig()

@@ -19,8 +19,8 @@ import (
 func TestSignUpHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	dependenciesContainer := container.New()
-	mockCacheClient := cache.NewMockClient(ctrl)
-	mockAccountsRepository := db.NewMockAccountsRepository(ctrl)
+	cacheClient := cache.NewMockClient(ctrl)
+	accountsRepository := db.NewMockAccountsRepository(ctrl)
 	env := &process.Env{
 		JWT: process.JWT{
 			ExpiresIn:        time.Duration(time.Second * 60),
@@ -29,11 +29,6 @@ func TestSignUpHandler(t *testing.T) {
 			RefreshSecret:    "refresh_secret",
 		},
 	}
-
-	var (
-		cacheClient        cache.Client          = mockCacheClient
-		accountsRepository db.AccountsRepository = mockAccountsRepository
-	)
 
 	dependenciesContainer.Inject(&accountsRepository, &cacheClient, env)
 
@@ -45,11 +40,11 @@ func TestSignUpHandler(t *testing.T) {
 			Password: "123456",
 		})
 
-		mockAccountsRepository.EXPECT().CheckUsernameExists(gomock.Any(), gomock.Eq("michael")).Return(false, nil)
+		accountsRepository.EXPECT().CheckUsernameExists(gomock.Any(), gomock.Eq("michael")).Return(false, nil)
 
-		mockAccountsRepository.EXPECT().Save(gomock.Any(), gomock.Eq("michael"), gomock.Any()).Return("8", nil)
+		accountsRepository.EXPECT().Save(gomock.Any(), gomock.Eq("michael"), gomock.Any()).Return("8", nil)
 
-		mockCacheClient.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		cacheClient.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 
 		resRecorder, _ := test_utils.DoRequest("POST", "/v1/signin", bytes.NewBuffer(reqBody), signUpHandler)
 
@@ -70,7 +65,7 @@ func TestSignUpHandler(t *testing.T) {
 			Password: "123456",
 		})
 
-		mockAccountsRepository.EXPECT().CheckUsernameExists(gomock.Any(), gomock.Eq("michael")).Return(true, nil)
+		accountsRepository.EXPECT().CheckUsernameExists(gomock.Any(), gomock.Eq("michael")).Return(true, nil)
 
 		resRecorder, _ := test_utils.DoRequest("POST", "/v1/signin", bytes.NewBuffer(reqBody), signUpHandler)
 

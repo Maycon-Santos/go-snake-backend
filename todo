@@ -1,0 +1,37 @@
+todo:
+- Criar método que valida e "parseia" o token jwt
+- Criar middleware que irá consumir esse método
+
+roadmap:
+
+- Banco de dados
+  - Criar camada para lidar com o banco
+  - Escolher driver para o banco e implementar
+  - Criar migrations para o banco
+  - Criar tabela de usuários
+
+- Autenticação
+  - Criar camada para autenticação
+  - Implementar camada de autenticação para entrar e sair da sala
+
+- Salas
+  - Ao entrar: Criar sala já inserindo o player que está criando
+  - Ao sair: O último player que sair excluirá a sala
+    - Se esse player for desconectado por queda de conexão a sala vai se apagar em x tempo que será configado da env
+
+- Camada ws que irá expor as rotas
+  - Para isso deve-se criar um método chamado `NewOrchestrator`
+  - Camada ws é quem irá avisar quem entrou ou quem saiu/desconectou da sala
+    - Essa camada deve saber quando o usuário saiu por vontade própria ou quando foi desconectado por queda de conexão
+    - Caso tenha sido queda de conexão o usuário terá chance de voltar à partida
+    - Caso tenha saído por vontade própria não terá mais chance para voltar
+
+- Criar camada para players
+  - Essa camada vai ter um repositório de players que guarda suas informações
+    - Nome e a sala em que estão serão as informações guardadas a priopri
+  - Quando o usuário fizer login
+    - Se for visitante: Guardará o nome (que deve ser único) e entrará no game
+      - Ele terá um id no hash do token jwt que será o único meio de identificá-lo
+    - Se for usuário cadastrado: Buscará os dados no banco e seguirá a inserção no repositório
+
+
