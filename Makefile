@@ -49,10 +49,9 @@ run-dev:
 		-v "$(PWD)":/usr/src/app \
     --network="host" \
 		--expose $(SERVER_PORT) \
-    -p $(SERVER_PORT):$(SERVER_PORT) \
 		--name $(DOCKER_IMAGE_NAME)-server \
 		$(DOCKER_IMAGE_NAME) \
-		redis-server && modd -f ./cmd/server/modd.conf
+		modd -f ./cmd/server/modd.conf
 
 migrate-up:
 	@docker run \

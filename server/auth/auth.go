@@ -7,7 +7,7 @@ import (
 
 	"github.com/Maycon-Santos/go-snake-backend/cache"
 	"github.com/Maycon-Santos/go-snake-backend/uuid"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
