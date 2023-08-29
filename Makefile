@@ -41,7 +41,7 @@ setup-dev:
 	@echo $(DOCKER_IMAGE_NAME)
 	@docker build \
 		--target development \
-		-t $(DOCKER_IMAGE_NAME) \
+		-t dev-$(DOCKER_IMAGE_NAME)-backend \
 		.
 
 run-dev:
@@ -49,8 +49,8 @@ run-dev:
 		-v "$(PWD)":/usr/src/app \
     --network="host" \
 		--expose $(SERVER_PORT) \
-		--name $(DOCKER_IMAGE_NAME)-server \
-		$(DOCKER_IMAGE_NAME) \
+		--name dev-$(DOCKER_IMAGE_NAME)-backend \
+		dev-$(DOCKER_IMAGE_NAME)-backend \
 		modd -f ./cmd/server/modd.conf
 
 migrate-up:

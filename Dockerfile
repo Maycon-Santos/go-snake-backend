@@ -9,3 +9,5 @@ FROM base AS development
 RUN go install github.com/cortesi/modd/cmd/modd@latest
 RUN go install github.com/golang/mock/mockgen@v1.6.0
 RUN go mod tidy
+
+FROM base AS production

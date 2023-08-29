@@ -1,12 +1,9 @@
 {
   "cSpell.words": [
     "gomock",
-<<<<<<< HEAD
     "httprouter",
     "sqlmock",
     "testutils",
-=======
->>>>>>> d7f61497df6ec1e3b7bf043e67c155a57b0bfb08
     "upgrader"
   ]
 }
