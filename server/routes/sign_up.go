@@ -1,4 +1,4 @@
-package http
+package routes
 
 import (
 	"encoding/json"
@@ -35,7 +35,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		var requestBody signUpRequestBody
 
 		if err := json.NewDecoder(request.Body).Decode(&requestBody); err != nil {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusUnprocessableEntity,
 				},
@@ -46,7 +46,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
@@ -54,7 +54,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		}
 
 		if responseType, err := validateSignUpFields(requestBody); err != nil {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusForbidden,
 				},
@@ -65,7 +65,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
@@ -79,7 +79,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		}
 
 		if usernameExists {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusUnauthorized,
 				},
@@ -90,7 +90,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
@@ -111,9 +111,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 
 		token, err := auth.CreateToken(
 			env.JWT.ExpiresIn,
-			env.JWT.RefreshExpiresIn,
 			env.JWT.Secret,
-			env.JWT.RefreshSecret,
 			accountID,
 		)
 		if err != nil {
@@ -124,19 +122,18 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		responseBody := responseConfig{
+		response := responseConfig{
 			Header: responseHeader{
 				Status: http.StatusCreated,
 			},
 			Body: responseBody{
 				Success: true,
 				Result: signUpResponseResult{
-					AccessToken:  token.AccessToken,
-					RefreshToken: token.RefreshToken,
+					AccessToken: token.AccessToken,
 				},
 			},
 		}
-		if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+		if err := makeResponse(request.Context(), writer, response); err != nil {
 			handleError(request.Context(), err)
 		}
 	}

@@ -12,12 +12,9 @@ import (
 )
 
 type TokenDetails struct {
-	AccessToken  string
-	RefreshToken string
-	AccessUuid   uint64
-	RefreshUuid  uint64
-	AtExpires    int64
-	RtExpires    int64
+	AccessToken string
+	AccessUuid  uint64
+	ExpiresAt   int64
 }
 
 func CompareHashAndPassword(hashedPassword string, password string) error {
@@ -31,68 +28,42 @@ func GeneratePasswordHash(password string) (string, error) {
 
 func CreateToken(
 	expiresIn time.Duration,
-	refreshExpiresIn time.Duration,
 	secret string,
-	refreshSecret string,
 	accountID string,
 ) (*TokenDetails, error) {
-	var err error
-
 	accessUuid, err := uuid.Generate()
 	if err != nil {
 		return nil, err
 	}
 
-	refreshUuid, err := uuid.Generate()
-	if err != nil {
-		return nil, err
-	}
-
 	tokenDetails := &TokenDetails{}
-	tokenDetails.AtExpires = time.Now().Add(expiresIn).Unix()
+	tokenDetails.ExpiresAt = time.Now().Add(expiresIn).Unix()
 	tokenDetails.AccessUuid = *accessUuid
 
-	tokenDetails.RtExpires = time.Now().Add(refreshExpiresIn).Unix()
-	tokenDetails.RefreshUuid = *refreshUuid
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"access_uuid": accessUuid,
+			"account_id":  accountID,
+			"expires_at":  tokenDetails.ExpiresAt,
+		})
 
-	atClaims := jwt.MapClaims{}
-	atClaims["authorized"] = true
-	atClaims["access_uuid"] = tokenDetails.AccessUuid
-	atClaims["account_id"] = accountID
-	atClaims["exp"] = tokenDetails.AtExpires
-
-	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	if tokenDetails.AccessToken, err = at.SignedString([]byte(secret)); err != nil {
-		return nil, err
-	}
-
-	rtClaims := jwt.MapClaims{}
-	rtClaims["refresh_uuid"] = tokenDetails.AccessUuid
-	rtClaims["account_id"] = accountID
-	rtClaims["exp"] = tokenDetails.RtExpires
-
-	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
-	tokenDetails.RefreshToken, err = rt.SignedString([]byte(refreshSecret))
+	tokenStr, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return nil, err
 	}
+
+	tokenDetails.AccessToken = tokenStr
 
 	return tokenDetails, nil
 }
 
 func CreateAuth(ctx context.Context, cacheClient cache.Client, accountID string, tokenDetails *TokenDetails) error {
-	at := time.Unix(tokenDetails.AtExpires, 0)
-	rt := time.Unix(tokenDetails.RtExpires, 0)
+	at := time.Unix(tokenDetails.ExpiresAt, 0)
 	now := time.Now()
 
 	errAccess := cacheClient.Set(ctx, strconv.FormatUint(tokenDetails.AccessUuid, 10), accountID, at.Sub(now))
 	if errAccess != nil {
 		return errAccess
-	}
-
-	errRefresh := cacheClient.Set(ctx, strconv.FormatUint(tokenDetails.RefreshUuid, 10), accountID, rt.Sub(now))
-	if errRefresh != nil {
-		return errRefresh
 	}
 
 	return nil

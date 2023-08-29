@@ -1,4 +1,4 @@
-package http
+package routes
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type responseConfig struct {
 	Body   responseBody
 }
 
-type responseType = string
+type responseType string
 
 const (
 	TYPE_UNKNOWN                 = responseType("UNKNOWN")
@@ -37,6 +37,7 @@ const (
 	TYPE_PASSWORD_MISSING        = responseType("PASSWORD_MISSING")
 	TYPE_PASSWORD_BELOW_MIN_LEN  = responseType("PASSWORD_BELOW_MIN_LEN")
 	TYPE_PASSWORD_ABOVE_MAX_LEN  = responseType("PASSWORD_ABOVE_MAX_LEN")
+	TYPE_ROOM_NOT_FOUND          = responseType("TYPE_ROOM_NOT_FOUND")
 )
 
 func makeResponse(ctx context.Context, writer http.ResponseWriter, response responseConfig) error {

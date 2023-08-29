@@ -8,7 +8,8 @@ import (
 
 type AccountsRepository interface {
 	CheckUsernameExists(ctx context.Context, username string) (bool, error)
-	Get(ctx context.Context, username string) (*Account, error)
+	GetByID(ctx context.Context, username string) (*Account, error)
+	GetByUsername(ctx context.Context, username string) (*Account, error)
 	Save(ctx context.Context, username string, password string) (string, error)
 }
 
@@ -51,7 +52,28 @@ func (ac accountsRepository) CheckUsernameExists(ctx context.Context, username s
 	return false, nil
 }
 
-func (ac accountsRepository) Get(ctx context.Context, username string) (*Account, error) {
+func (ac accountsRepository) GetByID(ctx context.Context, username string) (*Account, error) {
+	row := ac.dbConn.QueryRowContext(
+		ctx,
+		"SELECT id, username, password FROM accounts WHERE id=$1",
+		username,
+	)
+
+	var account Account
+
+	err := row.Scan(&account.ID, &account.UserName, &account.Password)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &account, nil
+}
+
+func (ac accountsRepository) GetByUsername(ctx context.Context, username string) (*Account, error) {
 	row := ac.dbConn.QueryRowContext(
 		ctx,
 		"SELECT id, username, password FROM accounts WHERE username=$1",

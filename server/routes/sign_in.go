@@ -1,4 +1,4 @@
-package http
+package routes
 
 import (
 	"encoding/json"
@@ -19,8 +19,7 @@ type signInRequestBody struct {
 }
 
 type signInResponseResult struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken string `json:"access_token"`
 }
 
 func SignInHandler(container container.Container) httprouter.Handle {
@@ -39,7 +38,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		var requestBody signInRequestBody
 
 		if err := json.NewDecoder(request.Body).Decode(&requestBody); err != nil {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusUnprocessableEntity,
 				},
@@ -50,7 +49,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
@@ -58,7 +57,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if responseType, err := validateSignInFields(requestBody); err != nil {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusForbidden,
 				},
@@ -69,21 +68,21 @@ func SignInHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
 			return
 		}
 
-		account, err := accountsRepository.Get(request.Context(), requestBody.Username)
+		account, err := accountsRepository.GetByUsername(request.Context(), requestBody.Username)
 		if err != nil {
 			handleError(request.Context(), err)
 			return
 		}
 
 		if account == nil {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusNotFound,
 				},
@@ -94,7 +93,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
@@ -102,7 +101,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 		}
 
 		if err = auth.CompareHashAndPassword(account.Password, requestBody.Password); err != nil {
-			responseBody := responseConfig{
+			response := responseConfig{
 				Header: responseHeader{
 					Status: http.StatusUnauthorized,
 				},
@@ -113,7 +112,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 				},
 			}
 
-			if err := makeResponse(request.Context(), writer, responseBody); err != nil {
+			if err := makeResponse(request.Context(), writer, response); err != nil {
 				handleError(request.Context(), err)
 			}
 
@@ -122,9 +121,7 @@ func SignInHandler(container container.Container) httprouter.Handle {
 
 		token, err := auth.CreateToken(
 			env.JWT.ExpiresIn,
-			env.JWT.RefreshExpiresIn,
 			env.JWT.Secret,
-			env.JWT.RefreshSecret,
 			account.ID,
 		)
 		if err != nil {
@@ -135,17 +132,16 @@ func SignInHandler(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		responseBody := responseConfig{
+		response := responseConfig{
 			Body: responseBody{
 				Success: true,
 				Result: signInResponseResult{
-					AccessToken:  token.AccessToken,
-					RefreshToken: token.RefreshToken,
+					AccessToken: token.AccessToken,
 				},
 			},
 		}
 
-		if err = makeResponse(request.Context(), writer, responseBody); err != nil {
+		if err = makeResponse(request.Context(), writer, response); err != nil {
 			handleError(request.Context(), err)
 		}
 	}
