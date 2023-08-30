@@ -42,7 +42,7 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 				Body: responseBody{
 					Success: false,
 					Type:    TYPE_PAYLOAD_INVALID,
-					Message: "playload is invalid",
+					Message: "payload is invalid",
 				},
 			}
 
