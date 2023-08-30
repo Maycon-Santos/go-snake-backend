@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -22,11 +21,10 @@ func CORSMiddleware(container container.Container) func(next httprouter.Handle) 
 
 	return func(next httprouter.Handle) httprouter.Handle {
 		return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-			fmt.Println(env.AllowOrigin)
-			writer.Header().Add("Access-Control-Allow-Origin", env.AllowOrigin)
-			writer.Header().Add("Access-Control-Allow-Credentials", "true")
-			writer.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-			writer.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			header := writer.Header()
+			header.Set("Access-Control-Allow-Origin", env.AccessControlAllowOrigin)
+			header.Set("Access-Control-Allow-Headers", env.AccessControlAllowHeaders)
+			header.Set("Access-Control-Allow-Methods", header.Get("Allow"))
 
 			if request.Method == "OPTIONS" {
 				http.Error(writer, "No Content", http.StatusNoContent)

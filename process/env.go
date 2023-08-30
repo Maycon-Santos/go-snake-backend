@@ -25,12 +25,13 @@ type JWT struct {
 }
 
 type Env struct {
-	AppName      string   `mapstructure:"app_name"`
-	ServerPort   int      `mapstructure:"server_port"`
-	RedisAddress string   `mapstructure:"redis_address"`
-	JWT          JWT      `mapstructure:",squash"`
-	Database     Database `mapstructure:",squash"`
-	AllowOrigin  string   `mapstructure:"allow_origin"`
+	AppName                   string   `mapstructure:"app_name"`
+	ServerPort                int      `mapstructure:"server_port"`
+	RedisAddress              string   `mapstructure:"redis_address"`
+	JWT                       JWT      `mapstructure:",squash"`
+	Database                  Database `mapstructure:",squash"`
+	AccessControlAllowOrigin  string   `mapstructure:"access_control_allow_origin"`
+	AccessControlAllowHeaders string   `mapstructure:"access_control_allow_headers"`
 }
 
 func NewEnv() (*Env, error) {

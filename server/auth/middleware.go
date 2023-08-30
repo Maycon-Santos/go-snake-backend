@@ -24,7 +24,7 @@ func GetDataMiddleware(container container.Container) func(next httprouter.Handl
 
 	return func(next httprouter.Handle) httprouter.Handle {
 		return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-			tokenStr := request.Header["Token"][0]
+			tokenStr := request.Header.Get("Token")
 			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 				return []byte(env.JWT.Secret), nil
 			})
