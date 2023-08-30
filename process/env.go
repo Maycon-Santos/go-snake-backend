@@ -30,6 +30,7 @@ type Env struct {
 	RedisAddress string   `mapstructure:"redis_address"`
 	JWT          JWT      `mapstructure:",squash"`
 	Database     Database `mapstructure:",squash"`
+	AllowOrigin  string   `mapstructure:"allow_origin"`
 }
 
 func NewEnv() (*Env, error) {
