@@ -8,19 +8,21 @@ import (
 	"github.com/Maycon-Santos/go-snake-backend/container"
 	"github.com/Maycon-Santos/go-snake-backend/game"
 	"github.com/Maycon-Santos/go-snake-backend/process"
+	"github.com/Maycon-Santos/go-snake-backend/utils"
 	"github.com/julienschmidt/httprouter"
 )
 
 type createRoomResponseResult struct {
-	RoomID *uint64 `json:"room_id"`
+	MatchID uint64 `json:"match_id"`
 }
 
 func CreateRoom(container container.Container) httprouter.Handle {
 	var (
-		env process.Env
+		env     process.Env
+		matches game.Matches
 	)
 
-	err := container.Retrieve(&env)
+	err := container.Retrieve(&env, &matches)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,21 +31,27 @@ func CreateRoom(container container.Container) httprouter.Handle {
 		accountID := params.ByName("account_id")
 		accountUsername := params.ByName("account_username")
 
-		if room, err := roomsRepository.GetByOwnerID(accountID); err == nil {
-			roomsRepository.DeleteByID(room.ID)
+		playerOwner := game.NewPlayer(accountID, accountUsername)
+
+		if match, err := matches.GetMatchByOwnerID(accountID); err == nil {
+			matches.DeleteByID(match.GetID())
 		}
 
-		roomID, err := roomsRepository.Add(5, game.NewPlayer(accountID, accountUsername))
+		match, err := matches.Add(5, playerOwner)
 		if err != nil {
 			handleError(request.Context(), err)
 			return
 		}
 
+		match.UpdateState(game.MatchStateInput{
+			Status: utils.Ptr(game.StatusOnHold),
+		})
+
 		err = makeResponse(context.Background(), writer, responseConfig{
 			Body: responseBody{
 				Success: true,
 				Result: createRoomResponseResult{
-					RoomID: roomID,
+					MatchID: match.GetID(),
 				},
 			},
 		})

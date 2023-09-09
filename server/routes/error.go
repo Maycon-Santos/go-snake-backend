@@ -1,8 +1,11 @@
 package routes
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 func handleError(ctx context.Context, err error) {
 	// WIP
-	panic(err)
+	fmt.Println(err)
 }

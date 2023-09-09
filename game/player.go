@@ -1,114 +1,126 @@
 package game
 
+import (
+	"github.com/gorilla/websocket"
+)
+
 type Player interface {
-	setRoom(room *room)
+	AddMovement(mv movement)
+	SendMessage(message []byte) error
+	SetMatch(room Match)
+	SetSocket(socket *websocket.Conn)
 	GetID() string
 	GetName() string
-	IsReady() bool
-	IsAlive() bool
-	MoveToRight()
-	MoveToLeft()
-	MoveToTop()
-	MoveToBottom()
-}
-
-type tile struct {
-	x int
-	y int
+	Move()
+	PlayerState
 }
 
 type player struct {
-	id      string
-	name    string
-	isAlive bool
-	isReady bool
-	tiles   []tile
-	room    *room
+	id        string
+	name      string
+	movements []movement
+	moving    movement
+	socket    *websocket.Conn
+	match     Match
+	PlayerState
 }
+
+type movement int
+
+const (
+	MoveTop movement = iota
+	MoveBottom
+	MoveLeft
+	MoveRight
+)
 
 func NewPlayer(id, name string) Player {
 	return &player{
-		id:   id,
-		name: name,
-		tiles: []tile{{
-			x: 0,
-			y: 0,
-		}},
+		id:          id,
+		name:        name,
+		moving:      MoveRight,
+		PlayerState: newPlayerState(),
 	}
 }
 
-func (p player) setRoom(room *room) {
-	p.room = room
+func (p *player) SetSocket(socket *websocket.Conn) {
+	p.socket = socket
 }
 
-func (p player) GetID() string {
+func (p *player) SendMessage(message []byte) error {
+	err := p.socket.WriteMessage(websocket.TextMessage, message)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *player) SetMatch(match Match) {
+	p.match = match
+}
+
+func (p *player) GetID() string {
 	return p.id
 }
 
-func (p player) GetName() string {
+func (p *player) GetName() string {
 	return p.name
 }
 
-func (p player) IsReady() bool {
-	return p.isReady
+func (p *player) AddMovement(mv movement) {
+	p.movements = append(p.movements, mv)
 }
 
-func (p player) IsAlive() bool {
-	return p.isAlive
-}
-
-func (p player) MoveToRight() {
-	p.tiles = append(
-		[]tile{{
-			p.tiles[0].x + 1,
-			p.tiles[0].y,
-		}},
-		p.tiles[:len(p.tiles)-1]...,
-	)
-
-	if p.tiles[0].x > p.room.tiles.horizontal {
-		p.tiles[0].x = 0
+func (p *player) Move() {
+	if len(p.movements) > 0 {
+		p.moving, p.movements = p.movements[0], p.movements[1:]
 	}
-}
 
-func (p player) MoveToLeft() {
-	p.tiles = append(
-		[]tile{{
-			p.tiles[0].x - 1,
-			p.tiles[0].y,
-		}},
-		p.tiles[:len(p.tiles)-1]...,
-	)
+	body := p.GetBody()
 
-	if p.tiles[0].x < 0 {
-		p.tiles[0].x = p.room.tiles.horizontal
+	var newBodyFragment BodyFragment
+
+	switch p.moving {
+	case MoveRight:
+		newBodyFragment = BodyFragment{
+			body[0].X + 1,
+			body[0].Y,
+		}
+	case MoveLeft:
+		newBodyFragment = BodyFragment{
+			body[0].X - 1,
+			body[0].Y,
+		}
+	case MoveTop:
+		newBodyFragment = BodyFragment{
+			body[0].X,
+			body[0].Y - 1,
+		}
+	case MoveBottom:
+		newBodyFragment = BodyFragment{
+			body[0].X + 1,
+			body[0].Y,
+		}
 	}
-}
 
-func (p player) MoveToTop() {
-	p.tiles = append(
-		[]tile{{
-			p.tiles[0].x,
-			p.tiles[0].y - 1,
-		}},
-		p.tiles[:len(p.tiles)-1]...,
-	)
-
-	if p.tiles[0].y < 0 {
-		p.tiles[0].y = p.room.tiles.vertical
+	if newBodyFragment.X >= p.match.GetTiles().Horizontal {
+		newBodyFragment.X = 0
 	}
-}
 
-func (p player) MoveToBottom() {
-	p.tiles = append(
-		[]tile{{
-			p.tiles[0].x,
-			p.tiles[0].y + 1,
-		}},
-		p.tiles[:len(p.tiles)-1]...,
-	)
-
-	if p.tiles[0].y > p.room.tiles.vertical {
-		p.tiles[0].y = 0
+	if newBodyFragment.X < 0 {
+		newBodyFragment.X = p.match.GetTiles().Horizontal - 1
 	}
+
+	if newBodyFragment.Y >= p.match.GetTiles().Vertical {
+		newBodyFragment.Y = 0
+	}
+
+	if newBodyFragment.Y < 0 {
+		newBodyFragment.Y = p.match.GetTiles().Vertical - 1
+	}
+
+	p.UpdateState(PlayerStateInput{
+		Body: append([]BodyFragment{newBodyFragment}, body[:len(p.GetBody())-1]...),
+	})
 }

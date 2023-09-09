@@ -7,6 +7,7 @@ import (
 	"github.com/Maycon-Santos/go-snake-backend/cache"
 	"github.com/Maycon-Santos/go-snake-backend/container"
 	"github.com/Maycon-Santos/go-snake-backend/db"
+	"github.com/Maycon-Santos/go-snake-backend/game"
 	"github.com/Maycon-Santos/go-snake-backend/process"
 	"github.com/Maycon-Santos/go-snake-backend/server"
 )
@@ -31,11 +32,13 @@ func main() {
 	}
 
 	dependenciesContainer := container.New()
+	matches := game.NewMatches()
 
 	err = dependenciesContainer.Inject(
 		env,
 		&cacheClient,
 		&accountsRepository,
+		&matches,
 	)
 	if err != nil {
 		log.Fatal(err)
