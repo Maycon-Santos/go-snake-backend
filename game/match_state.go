@@ -10,7 +10,7 @@ const (
 type MatchState interface {
 	UpdateState(input MatchStateInput)
 	OnUpdateState(fn func())
-	GetTiles() Tiles
+	GetArena() Arena
 }
 
 type Tiles struct {
@@ -19,11 +19,10 @@ type Tiles struct {
 }
 
 type Arena struct {
-	tiles Tiles
+	Tiles Tiles
 }
 
 type matchState struct {
-	tiles           Tiles
 	status          matchStatus
 	arena           Arena
 	onUpdateHandler func()
@@ -49,9 +48,10 @@ func (ms *matchState) UpdateState(input MatchStateInput) {
 
 	if input.Arena != nil {
 		if input.Arena.Tiles != nil {
-			ms.arena.tiles = *input.Arena.Tiles
+			ms.arena.Tiles = *input.Arena.Tiles
 		}
 	}
+
 	ms.dispatchUpdateEvent()
 }
 
@@ -65,6 +65,6 @@ func (ms *matchState) OnUpdateState(fn func()) {
 	ms.onUpdateHandler = fn
 }
 
-func (ms *matchState) GetTiles() Tiles {
-	return ms.tiles
+func (ms *matchState) GetArena() Arena {
+	return ms.arena
 }

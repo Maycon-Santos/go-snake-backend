@@ -13,7 +13,7 @@ import (
 )
 
 type createRoomResponseResult struct {
-	MatchID uint64 `json:"match_id"`
+	MatchID string `json:"match_id"`
 }
 
 func CreateRoom(container container.Container) httprouter.Handle {

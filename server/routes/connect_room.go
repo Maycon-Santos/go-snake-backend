@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/Maycon-Santos/go-snake-backend/container"
 	"github.com/Maycon-Santos/go-snake-backend/game"
@@ -42,7 +41,7 @@ type Arena struct {
 }
 
 type Match struct {
-	ID    uint64 `json:"id"`
+	ID    string `json:"id"`
 	Arena Arena  `json:"arena"`
 }
 
@@ -68,11 +67,7 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		accountID := params.ByName("account_id")
 		accountUsername := params.ByName("account_username")
-
-		matchID, err := strconv.ParseUint(params.ByName("room_id"), 10, 64)
-		if err != nil {
-			handleError(request.Context(), err)
-		}
+		matchID := params.ByName("match_id")
 
 		match, err := matches.GetMatchByID(matchID)
 		if err != nil {
@@ -107,13 +102,15 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 		match.Enter(currentPlayer)
 
 		match.OnUpdateState(func() {
+			arenaTiles := match.GetArena().Tiles
+
 			msg := message{
 				MatchData: &Match{
 					ID: match.GetID(),
 					Arena: Arena{
 						Tiles: tiles{
-							Horizontal: match.GetTiles().Horizontal,
-							Vertical:   match.GetTiles().Vertical,
+							Horizontal: arenaTiles.Horizontal,
+							Vertical:   arenaTiles.Vertical,
 						},
 					},
 				},
@@ -156,6 +153,25 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			}
 		})
 
+		currentPlayer.ReadMessage(func(message game.WrittenMessage) {
+			switch message.MoveTo {
+			case "right":
+				currentPlayer.AddMovement(game.MoveRight)
+			case "left":
+				currentPlayer.AddMovement(game.MoveLeft)
+			case "top":
+				currentPlayer.AddMovement(game.MoveTop)
+			case "bottom":
+				currentPlayer.AddMovement(game.MoveBottom)
+			}
+
+			// Comer a fruta
+			// Verificar colisões
+
+			// Criar interface Game
+			//	- Essa interface será responsável por fazer o bootstrap e
+		})
+
 		// BOOTSTRAP ⬇️
 
 		match.UpdateState(game.MatchStateInput{
@@ -168,13 +184,14 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 		})
 
 		currentPlayer.UpdateState(game.PlayerStateInput{
-			Body: []game.BodyFragment{{X: 0, Y: 0}},
+			Body: []game.BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
 		})
 
 		ticker := game.NewTicker()
 
 		for _, player := range match.GetPlayers() {
 			ticker.OnTick(player.Move)
+			ticker.OnTick(player.DieOnPlayerCollision)
 		}
 	}
 }

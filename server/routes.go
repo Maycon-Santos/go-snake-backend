@@ -40,8 +40,8 @@ func newRoutes(container container.Container) *httprouter.Router {
 	router.POST("/v1/signin", corsMiddleware(routes.SignInHandler(container)))
 	router.POST("/v1/signup", corsMiddleware(routes.SignUpHandler(container)))
 	router.GET("/v1/check_authentication", corsMiddleware(routes.CheckAuthentication(container)))
-	router.GET("/v1/rooms/create", corsMiddleware(authGetDataMiddleware(routes.CreateRoom(container))))
-	router.GET("/v1/rooms/connect/:room_id", corsMiddleware(authGetDataMiddleware(routes.ConnectRoom(container))))
+	router.POST("/v1/rooms/create", corsMiddleware(authGetDataMiddleware(routes.CreateRoom(container))))
+	router.GET("/v1/rooms/connect/:match_id", corsMiddleware(authGetDataMiddleware(routes.ConnectRoom(container))))
 
 	return router
 }

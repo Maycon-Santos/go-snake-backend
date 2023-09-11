@@ -10,7 +10,7 @@ type Message struct {
 
 type Match interface {
 	SendMessage(message []byte) error
-	GetID() uint64
+	GetID() string
 	GetOwner() Player
 	GetPlayers() []Player
 	GetPlayerByID(id string) *Player
@@ -19,14 +19,14 @@ type Match interface {
 }
 
 type match struct {
-	ID           uint64
+	ID           string
 	playersLimit int
 	owner        Player
 	players      []Player
 	MatchState
 }
 
-func NewMatch(id uint64, owner Player, playersLimit int) Match {
+func NewMatch(id string, owner Player, playersLimit int) Match {
 	return &match{
 		ID:           id,
 		playersLimit: playersLimit,
@@ -50,7 +50,7 @@ func (m *match) playersLen() int {
 	return len(m.players) + 1
 }
 
-func (m *match) GetID() uint64 {
+func (m *match) GetID() string {
 	return m.ID
 }
 
