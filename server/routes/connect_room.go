@@ -95,6 +95,25 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 
 		// BOOTSTRAP ⬇️
 
+		// 🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫
+
+		// food := game.NewFood()
+		// food.SetMatch(match)
+
+		// food.OnUpdateState(func() {
+		// 	msgBytes, err := parseFoodMessage(food)
+		// 	if err != nil {
+		// 		handleError(request.Context(), err)
+		// 	}
+
+		// 	err = match.SendMessage(msgBytes)
+		// 	if err != nil {
+		// 		handleError(request.Context(), err)
+		// 	}
+		// })
+
+		// food.Summon()
+
 		currentPlayer.UpdateState(game.PlayerStateInput{
 			IsAlive: utils.Ptr(true),
 			Body:    []game.BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
