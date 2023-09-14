@@ -1,6 +1,10 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/Maycon-Santos/go-snake-backend/utils"
+)
 
 type Lobby struct {
 	IsReady *bool `json:"is_ready,omitempty"`
@@ -88,10 +92,37 @@ func (m *match) Enter(player Player) error {
 		return fmt.Errorf("The match already has the maximum number of players (%d)", m.playersLen())
 	}
 
-	m.ticker.OnTick(player.Move)
-	m.ticker.OnTick(player.TeleportCornerScreen)
-	m.ticker.OnTick(player.Increase)
-	m.ticker.OnTick(player.DieOnPlayerCollision)
+	player.ReadMessage(func(message WrittenMessage) {
+		switch message.MoveTo {
+		case "right":
+			player.AddMovement(MoveRight)
+		case "left":
+			player.AddMovement(MoveLeft)
+		case "top":
+			player.AddMovement(MoveTop)
+		case "bottom":
+			player.AddMovement(MoveBottom)
+		}
+
+		if message.Ready != nil && *message.Ready {
+			player.UpdateState(PlayerStateInput{
+				IsReady: utils.Ptr(true),
+			})
+
+			everyoneIsReady := true
+
+			for _, player := range m.GetPlayers() {
+				if !player.IsReady() {
+					everyoneIsReady = false
+					break
+				}
+			}
+
+			if everyoneIsReady {
+				m.start()
+			}
+		}
+	})
 
 	return nil
 }
@@ -101,5 +132,18 @@ func (m *match) Bootstrap() {
 }
 
 func (m *match) start() {
+	m.ticker.Reset()
 
+	// Criar sistema de camadas
+	for _, player := range m.GetPlayers() {
+		player.UpdateState(PlayerStateInput{
+			IsAlive: utils.Ptr(true),
+			Body:    []BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
+		})
+
+		m.ticker.OnTick(player.Move, 0)
+		m.ticker.OnTick(player.TeleportCornerScreen, 0)
+		m.ticker.OnTick(player.Increase, 2)
+		m.ticker.OnTick(player.DieOnPlayerCollision, 2)
+	}
 }

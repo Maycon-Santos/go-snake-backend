@@ -29,6 +29,7 @@ type playerMessage struct {
 	ID       string                `json:"id"`
 	Username string                `json:"username"`
 	Body     []bodyFragmentMessage `json:"body"`
+	Ready    bool                  `json:"ready"`
 }
 
 type foodPositionMessage struct {
@@ -75,6 +76,8 @@ func parsePlayerMessage(player game.Player) ([]byte, error) {
 		Player: &playerMessage{
 			ID:       player.GetID(),
 			Username: player.GetName(),
+			Ready:    player.IsReady(),
+			Body:     make([]bodyFragmentMessage, 0),
 		},
 	}
 

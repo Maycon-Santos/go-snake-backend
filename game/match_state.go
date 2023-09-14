@@ -1,5 +1,7 @@
 package game
 
+import "sync"
+
 type matchStatus string
 
 const (
@@ -23,9 +25,10 @@ type Arena struct {
 }
 
 type matchState struct {
-	status          matchStatus
-	arena           Arena
-	onUpdateHandler func()
+	status           matchStatus
+	arena            Arena
+	onUpdateHandlers []func()
+	sync             sync.Mutex
 }
 
 type ArenaInput struct {
@@ -56,13 +59,21 @@ func (ms *matchState) UpdateState(input MatchStateInput) {
 }
 
 func (ms *matchState) dispatchUpdateEvent() {
-	if ms.onUpdateHandler != nil {
-		ms.onUpdateHandler()
+	ms.sync.Lock()
+	defer ms.sync.Unlock()
+
+	if ms.onUpdateHandlers != nil {
+		for _, fn := range ms.onUpdateHandlers {
+			fn()
+		}
 	}
 }
 
 func (ms *matchState) OnUpdateState(fn func()) {
-	ms.onUpdateHandler = fn
+	ms.sync.Lock()
+	defer ms.sync.Unlock()
+
+	ms.onUpdateHandlers = append(ms.onUpdateHandlers, fn)
 }
 
 func (ms *matchState) GetArena() Arena {

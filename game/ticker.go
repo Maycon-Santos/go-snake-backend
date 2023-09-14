@@ -6,50 +6,69 @@ import (
 )
 
 type GameTicker interface {
-	OnTick(func())
+	OnTick(fn func(), layer uint)
 	Stop()
+	Reset()
 }
 
 type gameTicker struct {
 	ticker   *time.Ticker
-	ticks    []func()
+	done     chan bool
+	ticks    map[uint][]func()
 	dataSync sync.Mutex
 }
 
 func NewTicker() GameTicker {
-	ticker := time.NewTicker(500 * time.Millisecond)
+	gt := gameTicker{}
 
-	gt := gameTicker{
-		ticker: ticker,
-	}
-
-	go func() {
-		for range ticker.C {
-			gt.sync(func() {
-				for _, fn := range gt.ticks {
-					fn()
-				}
-			})
-		}
-	}()
+	gt.start()
 
 	return &gt
 }
 
-// copiar essa forma para os states
+func (gt *gameTicker) start() {
+	gt.ticker = time.NewTicker(500 * time.Millisecond)
+	gt.done = make(chan bool)
 
-func (gt *gameTicker) OnTick(fn func()) {
-	gt.sync(func() {
-		gt.ticks = append(gt.ticks, fn)
-	})
+	go func() {
+		for {
+			select {
+			case <-gt.done:
+				return
+			case <-gt.ticker.C:
+				gt.dataSync.Lock()
+
+				for _, fns := range gt.ticks {
+					for _, fn := range fns {
+						fn()
+					}
+				}
+
+				gt.dataSync.Unlock()
+			}
+		}
+	}()
 }
 
-func (gt *gameTicker) sync(fn func()) {
+func (gt *gameTicker) OnTick(fn func(), layer uint) {
 	gt.dataSync.Lock()
-	fn()
-	gt.dataSync.Unlock()
+	defer gt.dataSync.Unlock()
+
+	if gt.ticks[layer] == nil {
+		gt.ticks[layer] = []func(){}
+	}
+
+	gt.ticks[layer] = append(gt.ticks[layer], fn)
 }
 
 func (gt *gameTicker) Stop() {
 	gt.ticker.Stop()
+}
+
+func (gt *gameTicker) Reset() {
+	gt.dataSync.Lock()
+	gt.ticks = map[uint][]func(){}
+	gt.done <- true
+	gt.dataSync.Unlock()
+	gt.start()
 }

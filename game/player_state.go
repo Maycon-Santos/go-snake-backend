@@ -1,5 +1,7 @@
 package game
 
+import "sync"
+
 type PlayerState interface {
 	UpdateState(input PlayerStateInput)
 	OnUpdateState(fn func())
@@ -14,10 +16,11 @@ type BodyFragment struct {
 }
 
 type playerState struct {
-	isAlive         bool
-	isReady         bool
-	Body            []BodyFragment
-	onUpdateHandler func()
+	isAlive          bool
+	isReady          bool
+	body             []BodyFragment
+	onUpdateHandlers []func()
+	sync             sync.Mutex
 }
 
 type PlayerStateInput struct {
@@ -40,24 +43,32 @@ func (ps *playerState) UpdateState(input PlayerStateInput) {
 	}
 
 	if input.Body != nil {
-		ps.Body = input.Body
+		ps.body = input.Body
 	}
 
 	ps.dispatchUpdateEvent()
 }
 
 func (ps *playerState) dispatchUpdateEvent() {
-	if ps.onUpdateHandler != nil {
-		ps.onUpdateHandler()
+	ps.sync.Lock()
+	defer ps.sync.Unlock()
+
+	if ps.onUpdateHandlers != nil {
+		for _, fn := range ps.onUpdateHandlers {
+			fn()
+		}
 	}
 }
 
 func (ps *playerState) OnUpdateState(fn func()) {
-	ps.onUpdateHandler = fn
+	ps.sync.Lock()
+	defer ps.sync.Unlock()
+
+	ps.onUpdateHandlers = append(ps.onUpdateHandlers, fn)
 }
 
 func (ps *playerState) GetBody() []BodyFragment {
-	return ps.Body
+	return ps.body
 }
 
 func (ps *playerState) IsReady() bool {

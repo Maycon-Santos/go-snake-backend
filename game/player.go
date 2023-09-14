@@ -35,13 +35,15 @@ type player struct {
 	moving           movement
 	socket           *websocket.Conn
 	messageListeners []messageListener
-	messageSync      sync.Mutex
+	sendMessageSync  sync.Mutex
+	readMessageSync  sync.Mutex
 	match            Match
 	PlayerState
 }
 
 type WrittenMessage struct {
-	MoveTo string `json:"moveTo"`
+	MoveTo string `json:"moveTo,omitempty"`
+	Ready  *bool  `json:"ready,omitempty"`
 }
 
 type movement int
@@ -72,8 +74,10 @@ func (p *player) startListening() {
 		for {
 			messageType, messageBytes, err := p.socket.ReadMessage()
 			if err != nil {
-				// Enviar erros para um chan
-				return
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					// Enviar erros para um chan
+					return
+				}
 			}
 
 			if messageType == websocket.TextMessage {
@@ -85,11 +89,11 @@ func (p *player) startListening() {
 					return
 				}
 
+				p.readMessageSync.Lock()
 				for _, listener := range p.messageListeners {
-					p.messageSync.Lock()
 					listener(message)
-					p.messageSync.Unlock()
 				}
+				p.readMessageSync.Unlock()
 			}
 		}
 	})()
@@ -98,12 +102,15 @@ func (p *player) startListening() {
 // Enviar erros para um chan
 
 func (p *player) ReadMessage(fn messageListener) {
+	p.readMessageSync.Lock()
+	defer p.readMessageSync.Unlock()
+
 	p.messageListeners = append(p.messageListeners, fn)
 }
 
 func (p *player) SendMessage(message []byte) error {
-	p.messageSync.Lock()
-	defer p.messageSync.Unlock()
+	p.sendMessageSync.Lock()
+	defer p.sendMessageSync.Unlock()
 
 	writer, err := p.socket.NextWriter(websocket.TextMessage)
 	if err != nil {
@@ -138,7 +145,7 @@ func (p *player) ToIncrease(toIncrease uint) {
 }
 
 func (p *player) Move() {
-	p.messageSync.Lock()
+	p.sendMessageSync.Lock()
 
 	if len(p.movements) > 0 {
 		p.moving, p.movements = p.movements[0], p.movements[1:]
@@ -173,7 +180,7 @@ func (p *player) Move() {
 
 	p.lastTail = body[len(p.GetBody())-1]
 
-	p.messageSync.Unlock()
+	p.sendMessageSync.Unlock()
 
 	p.UpdateState(PlayerStateInput{
 		Body: append([]BodyFragment{newBodyFragment}, body[:len(p.GetBody())-1]...),

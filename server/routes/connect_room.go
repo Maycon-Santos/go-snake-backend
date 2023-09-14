@@ -6,7 +6,6 @@ import (
 
 	"github.com/Maycon-Santos/go-snake-backend/container"
 	"github.com/Maycon-Santos/go-snake-backend/game"
-	"github.com/Maycon-Santos/go-snake-backend/utils"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 )
@@ -51,18 +50,18 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 		}
 
 		if player := match.GetPlayerByID(accountID); player != nil {
-			currentPlayer := *player
-			currentPlayer.SetSocket(socket)
+			p := *player
+			p.SetSocket(socket)
 			return
 		}
 
-		currentPlayer := game.NewPlayer(accountID, accountUsername)
-		currentPlayer.SetSocket(socket)
+		player := game.NewPlayer(accountID, accountUsername)
+		player.SetSocket(socket)
 
-		match.Enter(currentPlayer)
+		match.Enter(player)
 
-		currentPlayer.OnUpdateState(func() {
-			msgBytes, err := parsePlayerMessage(currentPlayer)
+		player.OnUpdateState(func() {
+			msgBytes, err := parsePlayerMessage(player)
 			if err != nil {
 				handleError(request.Context(), err)
 				return
@@ -71,21 +70,8 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			match.SendMessage(msgBytes)
 		})
 
-		currentPlayer.ReadMessage(func(message game.WrittenMessage) {
-			switch message.MoveTo {
-			case "right":
-				currentPlayer.AddMovement(game.MoveRight)
-			case "left":
-				currentPlayer.AddMovement(game.MoveLeft)
-			case "top":
-				currentPlayer.AddMovement(game.MoveTop)
-			case "bottom":
-				currentPlayer.AddMovement(game.MoveBottom)
-			}
-		})
-
 		if matchMessageBytes, err := parseMatchMessage(match); err == nil {
-			err = currentPlayer.SendMessage(matchMessageBytes)
+			err = player.SendMessage(matchMessageBytes)
 			if err != nil {
 				handleError(request.Context(), err)
 			}
@@ -114,9 +100,5 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 
 		// food.Summon()
 
-		currentPlayer.UpdateState(game.PlayerStateInput{
-			IsAlive: utils.Ptr(true),
-			Body:    []game.BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
-		})
 	}
 }
