@@ -29,15 +29,12 @@ func CreateRoom(container container.Container) httprouter.Handle {
 
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		accountID := params.ByName("account_id")
-		accountUsername := params.ByName("account_username")
-
-		playerOwner := game.NewPlayer(accountID, accountUsername)
 
 		if match, err := matches.GetMatchByOwnerID(accountID); err == nil {
 			matches.DeleteByID(match.GetID())
 		}
 
-		match, err := matches.Add(5, playerOwner)
+		match, err := matches.Add(5)
 		if err != nil {
 			handleError(request.Context(), err)
 			return
@@ -45,6 +42,25 @@ func CreateRoom(container container.Container) httprouter.Handle {
 
 		match.UpdateState(game.MatchStateInput{
 			Status: utils.Ptr(game.StatusOnHold),
+			Arena: &game.ArenaInput{
+				Tiles: &game.Tiles{
+					Horizontal: 60,
+					Vertical:   60,
+				},
+			},
+		})
+
+		match.OnUpdateState(func() {
+			msgBytes, err := parseMatchMessage(match)
+			if err != nil {
+				handleError(request.Context(), err)
+				return
+			}
+
+			err = match.SendMessage(msgBytes)
+			if err != nil {
+				handleError(request.Context(), err)
+			}
 		})
 
 		err = makeResponse(context.Background(), writer, responseConfig{

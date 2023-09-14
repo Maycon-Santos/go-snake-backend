@@ -7,17 +7,21 @@ import (
 
 type GameTicker interface {
 	OnTick(func())
+	Stop()
 }
 
 type gameTicker struct {
+	ticker   *time.Ticker
 	ticks    []func()
 	dataSync sync.Mutex
 }
 
 func NewTicker() GameTicker {
-	gt := gameTicker{}
-
 	ticker := time.NewTicker(500 * time.Millisecond)
+
+	gt := gameTicker{
+		ticker: ticker,
+	}
 
 	go func() {
 		for range ticker.C {
@@ -44,4 +48,8 @@ func (gt *gameTicker) sync(fn func()) {
 	gt.dataSync.Lock()
 	fn()
 	gt.dataSync.Unlock()
+}
+
+func (gt *gameTicker) Stop() {
+	gt.ticker.Stop()
 }

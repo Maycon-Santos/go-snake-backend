@@ -8,11 +8,10 @@ import (
 )
 
 type Matches interface {
-	Add(playersLimit int, owner Player) (Match, error)
+	Add(playersLimit int) (Match, error)
 	GetMatchByID(id string) (Match, error)
 	GetMatchByOwnerID(ownerID string) (Match, error)
 	DeleteByID(id string)
-	// SendMessage()
 }
 
 type matches struct {
@@ -25,7 +24,7 @@ func NewMatches() Matches {
 	}
 }
 
-func (r matches) Add(playersLimit int, owner Player) (Match, error) {
+func (r matches) Add(playersLimit int) (Match, error) {
 	id, err := uuid.Generate()
 	if err != nil {
 		return nil, err
@@ -33,11 +32,9 @@ func (r matches) Add(playersLimit int, owner Player) (Match, error) {
 
 	idStr := strconv.FormatUint(*id, 10)
 
-	match := NewMatch(idStr, owner, playersLimit)
+	match := NewMatch(idStr, playersLimit)
 
 	r.matches[idStr] = match
-
-	owner.SetMatch(r.matches[idStr])
 
 	return match, nil
 }

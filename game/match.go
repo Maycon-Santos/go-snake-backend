@@ -1,5 +1,7 @@
 package game
 
+import "fmt"
+
 type Lobby struct {
 	IsReady *bool `json:"is_ready,omitempty"`
 }
@@ -14,7 +16,8 @@ type Match interface {
 	GetOwner() Player
 	GetPlayers() []Player
 	GetPlayerByID(id string) *Player
-	Enter(player Player)
+	Enter(player Player) error
+	Bootstrap()
 	MatchState
 }
 
@@ -23,27 +26,26 @@ type match struct {
 	playersLimit int
 	owner        Player
 	players      []Player
+	ticker       GameTicker
 	MatchState
 }
 
-func NewMatch(id string, owner Player, playersLimit int) Match {
+func NewMatch(id string, playersLimit int) Match {
 	return &match{
 		ID:           id,
 		playersLimit: playersLimit,
-		owner:        owner,
 		players:      []Player{},
+		ticker:       NewTicker(),
 		MatchState:   NewMatchState(),
 	}
 }
 
-func (m *match) SendMessage(message []byte) error {
+func (m *match) SendMessage(message []byte) (err error) {
 	for _, player := range m.GetPlayers() {
-		if err := player.SendMessage(message); err != nil {
-			return err
-		}
+		err = player.SendMessage(message)
 	}
 
-	return nil
+	return
 }
 
 func (m *match) playersLen() int {
@@ -59,6 +61,10 @@ func (m *match) GetOwner() Player {
 }
 
 func (m *match) GetPlayers() []Player {
+	if m.owner == nil {
+		return nil
+	}
+
 	return append(m.players, m.owner)
 }
 
@@ -71,34 +77,29 @@ func (m *match) GetPlayerByID(id string) *Player {
 	return nil
 }
 
-func (m *match) Enter(player Player) {
+func (m *match) Enter(player Player) error {
 	player.SetMatch(m)
 
-	if m.owner.GetID() == player.GetID() {
+	if m.owner == nil {
 		m.owner = player
-		return
+	} else if m.playersLen() < int(m.playersLimit) {
+		m.players = append(m.players, player)
+	} else {
+		return fmt.Errorf("The match already has the maximum number of players (%d)", m.playersLen())
 	}
 
-	if m.playersLen() < int(m.playersLimit) {
-		m.players = append(m.players, player)
-	}
+	m.ticker.OnTick(player.Move)
+	m.ticker.OnTick(player.TeleportCornerScreen)
+	m.ticker.OnTick(player.Increase)
+	m.ticker.OnTick(player.DieOnPlayerCollision)
+
+	return nil
+}
+
+func (m *match) Bootstrap() {
+
 }
 
 func (m *match) start() {
-	// m.UpdateState(MatchStateInput{
-	// 	Tiles: &Tiles{
-	// 		Horizontal: 60,
-	// 		Vertical:   60,
-	// 	},
-	// })
 
-	// // currentPlayer.UpdateState(game.PlayerStateInput{
-	// // 	Body: []game.BodyFragment{{X: 0, Y: 0}},
-	// // })
-
-	// ticker := NewTicker()
-
-	// for _, player := range m.GetPlayers() {
-	// 	ticker.OnTick(player.Move)
-	// }
 }

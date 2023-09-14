@@ -1,54 +1,15 @@
 package routes
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
 	"github.com/Maycon-Santos/go-snake-backend/container"
 	"github.com/Maycon-Santos/go-snake-backend/game"
+	"github.com/Maycon-Santos/go-snake-backend/utils"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 )
-
-// type message string
-
-// const (
-// 	moveToRightMessage  = message("move to right")
-// 	MoveToLeftMessage   = message("move to left")
-// 	moveToTopMessage    = message("move to top")
-// 	moveToBottomMessage = message("move to bottom")
-// )
-
-type bodyFragment struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
-
-type tiles struct {
-	Horizontal int `json:"horizontal"`
-	Vertical   int `json:"vertical"`
-}
-
-type Player struct {
-	ID       string         `json:"id"`
-	Username string         `json:"username"`
-	Body     []bodyFragment `json:"body"`
-}
-
-type Arena struct {
-	Tiles tiles `json:"tiles"`
-}
-
-type Match struct {
-	ID    string `json:"id"`
-	Arena Arena  `json:"arena"`
-}
-
-type message struct {
-	Player    *Player `json:"player,omitempty"`
-	MatchData *Match  `json:"match,omitempty"`
-}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -89,68 +50,25 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		var currentPlayer game.Player
-
 		if player := match.GetPlayerByID(accountID); player != nil {
-			currentPlayer = *player
-		} else {
-			currentPlayer = game.NewPlayer(accountID, accountUsername)
+			currentPlayer := *player
+			currentPlayer.SetSocket(socket)
+			return
 		}
 
+		currentPlayer := game.NewPlayer(accountID, accountUsername)
 		currentPlayer.SetSocket(socket)
 
 		match.Enter(currentPlayer)
 
-		match.OnUpdateState(func() {
-			arenaTiles := match.GetArena().Tiles
-
-			msg := message{
-				MatchData: &Match{
-					ID: match.GetID(),
-					Arena: Arena{
-						Tiles: tiles{
-							Horizontal: arenaTiles.Horizontal,
-							Vertical:   arenaTiles.Vertical,
-						},
-					},
-				},
-			}
-
-			msgBytes, err := json.Marshal(msg)
-			if err != nil {
-				handleError(request.Context(), err)
-			}
-
-			err = match.SendMessage(msgBytes)
-			if err != nil {
-				handleError(request.Context(), err)
-			}
-		})
-
 		currentPlayer.OnUpdateState(func() {
-			msg := message{
-				Player: &Player{
-					ID:       currentPlayer.GetID(),
-					Username: currentPlayer.GetName(),
-				},
-			}
-
-			for _, fragment := range currentPlayer.GetBody() {
-				msg.Player.Body = append(msg.Player.Body, bodyFragment{
-					X: fragment.X,
-					Y: fragment.Y,
-				})
-			}
-
-			msgBytes, err := json.Marshal(msg)
+			msgBytes, err := parsePlayerMessage(currentPlayer)
 			if err != nil {
 				handleError(request.Context(), err)
+				return
 			}
 
-			err = match.SendMessage(msgBytes)
-			if err != nil {
-				handleError(request.Context(), err)
-			}
+			match.SendMessage(msgBytes)
 		})
 
 		currentPlayer.ReadMessage(func(message game.WrittenMessage) {
@@ -164,34 +82,22 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			case "bottom":
 				currentPlayer.AddMovement(game.MoveBottom)
 			}
-
-			// Comer a fruta
-			// Verificar colisões
-
-			// Criar interface Game
-			//	- Essa interface será responsável por fazer o bootstrap e
 		})
+
+		if matchMessageBytes, err := parseMatchMessage(match); err == nil {
+			err = currentPlayer.SendMessage(matchMessageBytes)
+			if err != nil {
+				handleError(request.Context(), err)
+			}
+		} else {
+			handleError(request.Context(), err)
+		}
 
 		// BOOTSTRAP ⬇️
 
-		match.UpdateState(game.MatchStateInput{
-			Arena: &game.ArenaInput{
-				Tiles: &game.Tiles{
-					Horizontal: 60,
-					Vertical:   60,
-				},
-			},
-		})
-
 		currentPlayer.UpdateState(game.PlayerStateInput{
-			Body: []game.BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
+			IsAlive: utils.Ptr(true),
+			Body:    []game.BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
 		})
-
-		ticker := game.NewTicker()
-
-		for _, player := range match.GetPlayers() {
-			ticker.OnTick(player.Move)
-			ticker.OnTick(player.DieOnPlayerCollision)
-		}
 	}
 }

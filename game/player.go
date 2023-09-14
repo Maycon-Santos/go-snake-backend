@@ -14,10 +14,13 @@ type Player interface {
 	SendMessage(message []byte) error
 	SetMatch(room Match)
 	SetSocket(socket *websocket.Conn)
+	ToIncrease(toIncrease uint)
+	Increase()
 	DieOnPlayerCollision()
 	GetID() string
 	GetName() string
 	Move()
+	TeleportCornerScreen()
 	PlayerState
 }
 
@@ -26,11 +29,13 @@ type messageListener = func(message WrittenMessage)
 type player struct {
 	id               string
 	name             string
+	toIncrease       uint
+	lastTail         BodyFragment
 	movements        []movement
 	moving           movement
 	socket           *websocket.Conn
 	messageListeners []messageListener
-	readMessageSync  sync.Mutex
+	messageSync      sync.Mutex
 	match            Match
 	PlayerState
 }
@@ -81,9 +86,9 @@ func (p *player) startListening() {
 				}
 
 				for _, listener := range p.messageListeners {
-					p.readMessageSync.Lock()
+					p.messageSync.Lock()
 					listener(message)
-					p.readMessageSync.Unlock()
+					p.messageSync.Unlock()
 				}
 			}
 		}
@@ -97,8 +102,15 @@ func (p *player) ReadMessage(fn messageListener) {
 }
 
 func (p *player) SendMessage(message []byte) error {
-	err := p.socket.WriteMessage(websocket.TextMessage, message)
+	p.messageSync.Lock()
+	defer p.messageSync.Unlock()
+
+	writer, err := p.socket.NextWriter(websocket.TextMessage)
 	if err != nil {
+		return err
+	}
+
+	if _, err = writer.Write(message); err != nil {
 		return err
 	}
 
@@ -121,8 +133,12 @@ func (p *player) AddMovement(mv movement) {
 	p.movements = append(p.movements, mv)
 }
 
+func (p *player) ToIncrease(toIncrease uint) {
+	p.toIncrease += toIncrease
+}
+
 func (p *player) Move() {
-	p.readMessageSync.Lock()
+	p.messageSync.Lock()
 
 	if len(p.movements) > 0 {
 		p.moving, p.movements = p.movements[0], p.movements[1:]
@@ -155,30 +171,53 @@ func (p *player) Move() {
 		}
 	}
 
-	tiles := p.match.GetArena().Tiles
+	p.lastTail = body[len(p.GetBody())-1]
 
-	// Passar isso para um método chamado TeleportCornerScreen
-
-	if newBodyFragment.X >= tiles.Horizontal {
-		newBodyFragment.X = 0
-	}
-
-	if newBodyFragment.X < 0 {
-		newBodyFragment.X = tiles.Horizontal - 1
-	}
-
-	if newBodyFragment.Y >= tiles.Vertical {
-		newBodyFragment.Y = 0
-	}
-
-	if newBodyFragment.Y < 0 {
-		newBodyFragment.Y = tiles.Vertical - 1
-	}
+	p.messageSync.Unlock()
 
 	p.UpdateState(PlayerStateInput{
 		Body: append([]BodyFragment{newBodyFragment}, body[:len(p.GetBody())-1]...),
 	})
-	p.readMessageSync.Unlock()
+}
+
+func (p *player) TeleportCornerScreen() {
+	body := p.GetBody()
+	head := body[0]
+	tiles := p.match.GetArena().Tiles
+
+	if head.X >= tiles.Horizontal {
+		p.UpdateState(PlayerStateInput{
+			Body: append([]BodyFragment{{X: 0, Y: head.Y}}, body[1:]...),
+		})
+	}
+
+	if head.X < 0 {
+		p.UpdateState(PlayerStateInput{
+			Body: append([]BodyFragment{{X: tiles.Horizontal - 1, Y: head.Y}}, body[1:]...),
+		})
+	}
+
+	if head.Y >= tiles.Vertical {
+		p.UpdateState(PlayerStateInput{
+			Body: append([]BodyFragment{{X: head.X, Y: 0}}, body[1:]...),
+		})
+	}
+
+	if head.Y < 0 {
+		p.UpdateState(PlayerStateInput{
+			Body: append([]BodyFragment{{X: head.X, Y: tiles.Vertical - 1}}, body[1:]...),
+		})
+	}
+}
+
+func (p *player) Increase() {
+	if p.toIncrease > 0 {
+		p.toIncrease -= 1
+
+		p.UpdateState(PlayerStateInput{
+			Body: append(p.GetBody(), p.lastTail),
+		})
+	}
 }
 
 func (p *player) DieOnPlayerCollision() {
