@@ -25,7 +25,7 @@ func (f *food) SetMatch(match Match) {
 }
 
 func (f *food) Summon() {
-	tiles := f.match.GetArena().Tiles
+	tiles := f.match.GetMap().Tiles
 
 	newPosition := foodPosition{
 		X: rand.Intn(tiles.Horizontal - 1),

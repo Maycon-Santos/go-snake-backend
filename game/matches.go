@@ -49,7 +49,13 @@ func (r matches) GetMatchByID(id string) (Match, error) {
 
 func (r matches) GetMatchByOwnerID(ownerID string) (Match, error) {
 	for _, match := range r.matches {
-		if match.GetOwner().GetID() == ownerID {
+		owner := match.GetOwner()
+
+		if owner == nil {
+			continue
+		}
+
+		if owner.GetID() == ownerID {
 			return match, nil
 		}
 	}

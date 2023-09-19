@@ -16,7 +16,7 @@ type createRoomResponseResult struct {
 	MatchID string `json:"match_id"`
 }
 
-func CreateRoom(container container.Container) httprouter.Handle {
+func CreateMatch(container container.Container) httprouter.Handle {
 	var (
 		env     process.Env
 		matches game.Matches
@@ -41,8 +41,9 @@ func CreateRoom(container container.Container) httprouter.Handle {
 		}
 
 		match.UpdateState(game.MatchStateInput{
-			Status: utils.Ptr(game.StatusOnHold),
-			Arena: &game.ArenaInput{
+			Status:     utils.Ptr(game.StatusOnHold),
+			FoodsLimit: utils.Ptr(1),
+			Map: &game.MapInput{
 				Tiles: &game.Tiles{
 					Horizontal: 60,
 					Vertical:   60,

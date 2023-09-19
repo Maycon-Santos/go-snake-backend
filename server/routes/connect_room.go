@@ -16,7 +16,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func ConnectRoom(container container.Container) httprouter.Handle {
+func ConnectMatch(container container.Container) httprouter.Handle {
 	var matches game.Matches
 
 	err := container.Retrieve(&matches)
@@ -55,13 +55,13 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			return
 		}
 
-		player := game.NewPlayer(accountID, accountUsername)
-		player.SetSocket(socket)
+		currentPlayer := game.NewPlayer(accountID, accountUsername)
+		currentPlayer.SetSocket(socket)
 
-		match.Enter(player)
+		match.Enter(currentPlayer)
 
-		player.OnUpdateState(func() {
-			msgBytes, err := parsePlayerMessage(player)
+		currentPlayer.OnUpdateState(func() {
+			msgBytes, err := parsePlayerMessage(currentPlayer)
 			if err != nil {
 				handleError(request.Context(), err)
 				return
@@ -70,8 +70,24 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			match.SendMessage(msgBytes)
 		})
 
+		match.OnStart(func() {
+			for _, food := range match.GetFoods() {
+				food.OnUpdateState(func() {
+					msgBytes, err := parseFoodMessage(food)
+					if err != nil {
+						handleError(request.Context(), err)
+					}
+
+					err = match.SendMessage(msgBytes)
+					if err != nil {
+						handleError(request.Context(), err)
+					}
+				})
+			}
+		})
+
 		if matchMessageBytes, err := parseMatchMessage(match); err == nil {
-			err = player.SendMessage(matchMessageBytes)
+			err = currentPlayer.SendMessage(matchMessageBytes)
 			if err != nil {
 				handleError(request.Context(), err)
 			}
@@ -79,26 +95,26 @@ func ConnectRoom(container container.Container) httprouter.Handle {
 			handleError(request.Context(), err)
 		}
 
-		// BOOTSTRAP ⬇️
+		for _, player := range match.GetPlayers() {
+			if playerMessageBytes, err := parsePlayerMessage(player); err == nil {
+				err = currentPlayer.SendMessage(playerMessageBytes)
+				if err != nil {
+					handleError(request.Context(), err)
+				}
+			} else {
+				handleError(request.Context(), err)
+			}
+		}
 
-		// 🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫🎫
-
-		// food := game.NewFood()
-		// food.SetMatch(match)
-
-		// food.OnUpdateState(func() {
-		// 	msgBytes, err := parseFoodMessage(food)
-		// 	if err != nil {
-		// 		handleError(request.Context(), err)
-		// 	}
-
-		// 	err = match.SendMessage(msgBytes)
-		// 	if err != nil {
-		// 		handleError(request.Context(), err)
-		// 	}
-		// })
-
-		// food.Summon()
-
+		for _, food := range match.GetFoods() {
+			if foodMessageBytes, err := parseFoodMessage(food); err == nil {
+				err = match.SendMessage(foodMessageBytes)
+				if err != nil {
+					handleError(request.Context(), err)
+				}
+			} else {
+				handleError(request.Context(), err)
+			}
+		}
 	}
 }

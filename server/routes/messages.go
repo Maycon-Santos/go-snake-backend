@@ -11,13 +11,14 @@ type tilesMessage struct {
 	Vertical   int `json:"vertical"`
 }
 
-type arenaMessage struct {
+type mapMessage struct {
 	Tiles tilesMessage `json:"tiles"`
 }
 
 type matchMessage struct {
-	ID    string       `json:"id"`
-	Arena arenaMessage `json:"arena"`
+	ID     string     `json:"id"`
+	Status string     `json:"status"`
+	Map    mapMessage `json:"map"`
 }
 
 type bodyFragmentMessage struct {
@@ -30,6 +31,7 @@ type playerMessage struct {
 	Username string                `json:"username"`
 	Body     []bodyFragmentMessage `json:"body"`
 	Ready    bool                  `json:"ready"`
+	Alive    bool                  `json:"alive"`
 }
 
 type foodPositionMessage struct {
@@ -49,15 +51,16 @@ type message struct {
 }
 
 func parseMatchMessage(match game.Match) ([]byte, error) {
-	arenaTiles := match.GetArena().Tiles
+	mapTiles := match.GetMap().Tiles
 
 	msg := message{
 		MatchData: &matchMessage{
-			ID: match.GetID(),
-			Arena: arenaMessage{
+			ID:     match.GetID(),
+			Status: string(match.GetStatus()),
+			Map: mapMessage{
 				Tiles: tilesMessage{
-					Horizontal: arenaTiles.Horizontal,
-					Vertical:   arenaTiles.Vertical,
+					Horizontal: mapTiles.Horizontal,
+					Vertical:   mapTiles.Vertical,
 				},
 			},
 		},
@@ -77,6 +80,7 @@ func parsePlayerMessage(player game.Player) ([]byte, error) {
 			ID:       player.GetID(),
 			Username: player.GetName(),
 			Ready:    player.IsReady(),
+			Alive:    player.IsAlive(),
 			Body:     make([]bodyFragmentMessage, 0),
 		},
 	}

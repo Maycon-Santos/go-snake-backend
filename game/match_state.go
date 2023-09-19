@@ -5,14 +5,16 @@ import "sync"
 type matchStatus string
 
 const (
-	StatusOnHold  = matchStatus("STATUS_ON_HOLD")
-	StatusRunning = matchStatus("STATUS_RUNNING")
+	StatusOnHold  = matchStatus("ON_HOLD")
+	StatusRunning = matchStatus("RUNNING")
 )
 
 type MatchState interface {
 	UpdateState(input MatchStateInput)
 	OnUpdateState(fn func())
-	GetArena() Arena
+	GetMap() Map
+	GetFoodsLimit() int
+	GetStatus() matchStatus
 }
 
 type Tiles struct {
@@ -20,24 +22,26 @@ type Tiles struct {
 	Vertical   int
 }
 
-type Arena struct {
+type Map struct {
 	Tiles Tiles
 }
 
 type matchState struct {
 	status           matchStatus
-	arena            Arena
+	_map             Map
+	foodsLimit       int
 	onUpdateHandlers []func()
 	sync             sync.Mutex
 }
 
-type ArenaInput struct {
+type MapInput struct {
 	Tiles *Tiles
 }
 
 type MatchStateInput struct {
-	Status *matchStatus
-	Arena  *ArenaInput
+	Status     *matchStatus
+	Map        *MapInput
+	FoodsLimit *int
 }
 
 func NewMatchState() MatchState {
@@ -49,10 +53,14 @@ func (ms *matchState) UpdateState(input MatchStateInput) {
 		ms.status = *input.Status
 	}
 
-	if input.Arena != nil {
-		if input.Arena.Tiles != nil {
-			ms.arena.Tiles = *input.Arena.Tiles
+	if input.Map != nil {
+		if input.Map.Tiles != nil {
+			ms._map.Tiles = *input.Map.Tiles
 		}
+	}
+
+	if input.FoodsLimit != nil {
+		ms.foodsLimit = *input.FoodsLimit
 	}
 
 	ms.dispatchUpdateEvent()
@@ -76,6 +84,14 @@ func (ms *matchState) OnUpdateState(fn func()) {
 	ms.onUpdateHandlers = append(ms.onUpdateHandlers, fn)
 }
 
-func (ms *matchState) GetArena() Arena {
-	return ms.arena
+func (ms *matchState) GetMap() Map {
+	return ms._map
+}
+
+func (ms *matchState) GetFoodsLimit() int {
+	return ms.foodsLimit
+}
+
+func (ms *matchState) GetStatus() matchStatus {
+	return ms.status
 }

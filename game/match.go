@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/Maycon-Santos/go-snake-backend/utils"
 )
@@ -20,17 +21,23 @@ type Match interface {
 	GetOwner() Player
 	GetPlayers() []Player
 	GetPlayerByID(id string) *Player
+	GetFoods() []Food
 	Enter(player Player) error
-	Bootstrap()
+	OnStart(fn func())
+	Ready()
 	MatchState
 }
 
 type match struct {
-	ID           string
-	playersLimit int
-	owner        Player
-	players      []Player
-	ticker       GameTicker
+	ID              string
+	playersLimit    int
+	owner           Player
+	players         []Player
+	foods           []Food
+	ticker          GameTicker
+	onStartHandlers []func()
+	onStartSync     sync.Mutex
+	foodsSync       sync.Mutex
 	MatchState
 }
 
@@ -81,6 +88,13 @@ func (m *match) GetPlayerByID(id string) *Player {
 	return nil
 }
 
+func (m *match) GetFoods() []Food {
+	m.foodsSync.Lock()
+	defer m.foodsSync.Unlock()
+
+	return m.foods
+}
+
 func (m *match) Enter(player Player) error {
 	player.SetMatch(m)
 
@@ -92,49 +106,54 @@ func (m *match) Enter(player Player) error {
 		return fmt.Errorf("The match already has the maximum number of players (%d)", m.playersLen())
 	}
 
-	player.ReadMessage(func(message WrittenMessage) {
-		switch message.MoveTo {
-		case "right":
-			player.AddMovement(MoveRight)
-		case "left":
-			player.AddMovement(MoveLeft)
-		case "top":
-			player.AddMovement(MoveTop)
-		case "bottom":
-			player.AddMovement(MoveBottom)
-		}
-
-		if message.Ready != nil && *message.Ready {
-			player.UpdateState(PlayerStateInput{
-				IsReady: utils.Ptr(true),
-			})
-
-			everyoneIsReady := true
-
-			for _, player := range m.GetPlayers() {
-				if !player.IsReady() {
-					everyoneIsReady = false
-					break
-				}
-			}
-
-			if everyoneIsReady {
-				m.start()
-			}
-		}
-	})
-
 	return nil
 }
 
-func (m *match) Bootstrap() {
+func (m *match) Ready() {
+	everyoneIsReady := true
 
+	for _, player := range m.GetPlayers() {
+		if !player.IsReady() {
+			everyoneIsReady = false
+			break
+		}
+	}
+
+	if everyoneIsReady {
+		m.UpdateState(MatchStateInput{
+			Status: utils.Ptr(StatusRunning),
+		})
+
+		m.start()
+	}
+}
+
+func (m *match) OnStart(fn func()) {
+	m.onStartSync.Lock()
+	defer m.onStartSync.Unlock()
+
+	m.onStartHandlers = append(m.onStartHandlers, fn)
 }
 
 func (m *match) start() {
 	m.ticker.Reset()
 
-	// Criar sistema de camadas
+	m.foodsSync.Lock()
+	m.foods = make([]Food, 0, m.GetFoodsLimit())
+	m.foodsSync.Unlock()
+
+	for i := 0; i < m.GetFoodsLimit(); i++ {
+		food := NewFood()
+		food.SetMatch(m)
+		m.foods = append(m.foods, food)
+	}
+
+	for _, fn := range m.onStartHandlers {
+		m.onStartSync.Lock()
+		fn()
+		m.onStartSync.Unlock()
+	}
+
 	for _, player := range m.GetPlayers() {
 		player.UpdateState(PlayerStateInput{
 			IsAlive: utils.Ptr(true),
@@ -145,5 +164,10 @@ func (m *match) start() {
 		m.ticker.OnTick(player.TeleportCornerScreen, 0)
 		m.ticker.OnTick(player.Increase, 2)
 		m.ticker.OnTick(player.DieOnPlayerCollision, 2)
+	}
+
+	for _, food := range m.foods {
+		food.Summon()
+		m.ticker.OnTick(food.CheckWasEaten, 1)
 	}
 }

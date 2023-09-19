@@ -10,7 +10,6 @@ import (
 
 type Player interface {
 	AddMovement(mv movement)
-	ReadMessage(fn messageListener)
 	SendMessage(message []byte) error
 	SetMatch(room Match)
 	SetSocket(socket *websocket.Conn)
@@ -36,7 +35,6 @@ type player struct {
 	socket           *websocket.Conn
 	messageListeners []messageListener
 	sendMessageSync  sync.Mutex
-	readMessageSync  sync.Mutex
 	match            Match
 	PlayerState
 }
@@ -89,24 +87,36 @@ func (p *player) startListening() {
 					return
 				}
 
-				p.readMessageSync.Lock()
-				for _, listener := range p.messageListeners {
-					listener(message)
-				}
-				p.readMessageSync.Unlock()
+				p.readMessages(message)
 			}
 		}
 	})()
 }
 
-// Enviar erros para um chan
+func (p *player) readMessages(message WrittenMessage) {
+	switch message.MoveTo {
+	case "right":
+		p.AddMovement(MoveRight)
+	case "left":
+		p.AddMovement(MoveLeft)
+	case "top":
+		p.AddMovement(MoveTop)
+	case "bottom":
+		p.AddMovement(MoveBottom)
+	}
 
-func (p *player) ReadMessage(fn messageListener) {
-	p.readMessageSync.Lock()
-	defer p.readMessageSync.Unlock()
+	if p.match.GetStatus() == StatusOnHold {
+		if message.Ready != nil && *message.Ready {
+			p.UpdateState(PlayerStateInput{
+				IsReady: utils.Ptr(true),
+			})
 
-	p.messageListeners = append(p.messageListeners, fn)
+			p.match.Ready()
+		}
+	}
 }
+
+// Enviar erros para um chan
 
 func (p *player) SendMessage(message []byte) error {
 	p.sendMessageSync.Lock()
@@ -145,7 +155,9 @@ func (p *player) ToIncrease(toIncrease uint) {
 }
 
 func (p *player) Move() {
-	p.sendMessageSync.Lock()
+	if !p.IsAlive() {
+		return
+	}
 
 	if len(p.movements) > 0 {
 		p.moving, p.movements = p.movements[0], p.movements[1:]
@@ -180,17 +192,19 @@ func (p *player) Move() {
 
 	p.lastTail = body[len(p.GetBody())-1]
 
-	p.sendMessageSync.Unlock()
-
 	p.UpdateState(PlayerStateInput{
 		Body: append([]BodyFragment{newBodyFragment}, body[:len(p.GetBody())-1]...),
 	})
 }
 
 func (p *player) TeleportCornerScreen() {
+	if !p.IsAlive() {
+		return
+	}
+
 	body := p.GetBody()
 	head := body[0]
-	tiles := p.match.GetArena().Tiles
+	tiles := p.match.GetMap().Tiles
 
 	if head.X >= tiles.Horizontal {
 		p.UpdateState(PlayerStateInput{
@@ -218,6 +232,10 @@ func (p *player) TeleportCornerScreen() {
 }
 
 func (p *player) Increase() {
+	if !p.IsAlive() {
+		return
+	}
+
 	if p.toIncrease > 0 {
 		p.toIncrease -= 1
 
@@ -228,9 +246,17 @@ func (p *player) Increase() {
 }
 
 func (p *player) DieOnPlayerCollision() {
+	if !p.IsAlive() {
+		return
+	}
+
 	head := p.GetBody()[0]
 
 	for _, player := range p.match.GetPlayers() {
+		if !player.IsAlive() {
+			continue
+		}
+
 		for j, bodyFragment := range player.GetBody() {
 			if j == 0 && player.GetID() == p.id {
 				continue
@@ -238,7 +264,8 @@ func (p *player) DieOnPlayerCollision() {
 
 			collided := bodyFragment.X == head.X && bodyFragment.Y == head.Y
 
-			if player.IsAlive() && collided {
+			if collided {
+				p.movements = make([]movement, 0)
 				p.UpdateState(PlayerStateInput{
 					IsAlive: utils.Ptr(false),
 				})
