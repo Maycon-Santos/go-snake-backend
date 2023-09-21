@@ -148,11 +148,11 @@ func (m *match) start() {
 		m.foods = append(m.foods, food)
 	}
 
+	m.onStartSync.Lock()
 	for _, fn := range m.onStartHandlers {
-		m.onStartSync.Lock()
 		fn()
-		m.onStartSync.Unlock()
 	}
+	m.onStartSync.Unlock()
 
 	for _, player := range m.GetPlayers() {
 		player.UpdateState(PlayerStateInput{
@@ -160,10 +160,17 @@ func (m *match) start() {
 			Body:    []BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
 		})
 
-		m.ticker.OnTick(player.Move, 0)
-		m.ticker.OnTick(player.TeleportCornerScreen, 0)
-		m.ticker.OnTick(player.Increase, 2)
-		m.ticker.OnTick(player.DieOnPlayerCollision, 2)
+		m.ticker.OnTick(func() {
+			player.OpenBatch()
+			player.Move()
+			player.TeleportCornerScreen()
+		}, 0)
+
+		m.ticker.OnTick(func() {
+			player.Increase()
+			player.DieOnPlayerCollision()
+			player.CloseBatch()
+		}, 2)
 	}
 
 	for _, food := range m.foods {

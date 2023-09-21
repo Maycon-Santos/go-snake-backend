@@ -45,8 +45,8 @@ func CreateMatch(container container.Container) httprouter.Handle {
 			FoodsLimit: utils.Ptr(1),
 			Map: &game.MapInput{
 				Tiles: &game.Tiles{
-					Horizontal: 60,
-					Vertical:   60,
+					Horizontal: 64,
+					Vertical:   36,
 				},
 			},
 		})

@@ -1,6 +1,9 @@
 package game
 
-import "sync"
+import (
+	"log"
+	"sync"
+)
 
 type PlayerState interface {
 	UpdateState(input PlayerStateInput)
@@ -8,6 +11,9 @@ type PlayerState interface {
 	IsReady() bool
 	IsAlive() bool
 	GetBody() []BodyFragment
+
+	OpenBatch()
+	CloseBatch()
 }
 
 type BodyFragment struct {
@@ -21,6 +27,8 @@ type playerState struct {
 	body             []BodyFragment
 	onUpdateHandlers []func()
 	sync             sync.Mutex
+	isBatching       bool
+	onCloseBatch     func()
 }
 
 type PlayerStateInput struct {
@@ -31,6 +39,28 @@ type PlayerStateInput struct {
 
 func newPlayerState() PlayerState {
 	return &playerState{}
+}
+
+func (ps *playerState) OpenBatch() {
+	if ps.isBatching {
+		log.Fatal("There is already an open batch")
+		return
+	}
+
+	ps.isBatching = true
+}
+
+func (ps *playerState) CloseBatch() {
+	if !ps.isBatching {
+		log.Fatal("The batch needs to be opened first")
+		return
+	}
+
+	ps.isBatching = false
+
+	if ps.onCloseBatch != nil {
+		ps.onCloseBatch()
+	}
 }
 
 func (ps *playerState) UpdateState(input PlayerStateInput) {
@@ -46,7 +76,11 @@ func (ps *playerState) UpdateState(input PlayerStateInput) {
 		ps.body = input.Body
 	}
 
-	ps.dispatchUpdateEvent()
+	if ps.isBatching {
+		ps.onCloseBatch = ps.dispatchUpdateEvent
+	} else {
+		ps.dispatchUpdateEvent()
+	}
 }
 
 func (ps *playerState) dispatchUpdateEvent() {

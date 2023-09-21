@@ -1,6 +1,7 @@
 package game
 
 import (
+	"sort"
 	"sync"
 	"time"
 )
@@ -27,7 +28,7 @@ func NewTicker() GameTicker {
 }
 
 func (gt *gameTicker) start() {
-	gt.ticker = time.NewTicker(500 * time.Millisecond)
+	gt.ticker = time.NewTicker(time.Second / 18)
 	gt.done = make(chan bool)
 
 	go func() {
@@ -38,8 +39,15 @@ func (gt *gameTicker) start() {
 			case <-gt.ticker.C:
 				gt.dataSync.Lock()
 
-				for _, fns := range gt.ticks {
-					for _, fn := range fns {
+				keys := make([]uint, 0)
+				for k := range gt.ticks {
+					keys = append(keys, k)
+				}
+
+				sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+				for _, k := range keys {
+					for _, fn := range gt.ticks[k] {
 						fn()
 					}
 				}
@@ -55,7 +63,7 @@ func (gt *gameTicker) OnTick(fn func(), layer uint) {
 	defer gt.dataSync.Unlock()
 
 	if gt.ticks[layer] == nil {
-		gt.ticks[layer] = []func(){}
+		gt.ticks[layer] = make([]func(), 0)
 	}
 
 	gt.ticks[layer] = append(gt.ticks[layer], fn)

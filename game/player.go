@@ -26,16 +26,22 @@ type Player interface {
 type messageListener = func(message WrittenMessage)
 
 type player struct {
-	id               string
-	name             string
-	toIncrease       uint
-	lastTail         BodyFragment
-	movements        []movement
-	moving           movement
-	socket           *websocket.Conn
+	id     string
+	name   string
+	socket *websocket.Conn
+
+	match Match
+
 	messageListeners []messageListener
 	sendMessageSync  sync.Mutex
-	match            Match
+
+	toIncrease uint
+
+	movementSync sync.Mutex
+	movements    []movement
+	moving       movement
+	lastTail     BodyFragment
+
 	PlayerState
 }
 
@@ -47,8 +53,8 @@ type WrittenMessage struct {
 type movement int
 
 const (
-	MoveTop movement = iota
-	MoveBottom
+	MoveUp movement = iota
+	MoveDown
 	MoveLeft
 	MoveRight
 )
@@ -99,10 +105,10 @@ func (p *player) readMessages(message WrittenMessage) {
 		p.AddMovement(MoveRight)
 	case "left":
 		p.AddMovement(MoveLeft)
-	case "top":
-		p.AddMovement(MoveTop)
-	case "bottom":
-		p.AddMovement(MoveBottom)
+	case "up":
+		p.AddMovement(MoveUp)
+	case "down":
+		p.AddMovement(MoveDown)
 	}
 
 	if p.match.GetStatus() == StatusOnHold {
@@ -147,6 +153,9 @@ func (p *player) GetName() string {
 }
 
 func (p *player) AddMovement(mv movement) {
+	p.movementSync.Lock()
+	defer p.movementSync.Unlock()
+
 	p.movements = append(p.movements, mv)
 }
 
@@ -159,9 +168,11 @@ func (p *player) Move() {
 		return
 	}
 
+	p.movementSync.Lock()
 	if len(p.movements) > 0 {
 		p.moving, p.movements = p.movements[0], p.movements[1:]
 	}
+	p.movementSync.Unlock()
 
 	body := p.GetBody()
 
@@ -178,12 +189,12 @@ func (p *player) Move() {
 			body[0].X - 1,
 			body[0].Y,
 		}
-	case MoveTop:
+	case MoveUp:
 		newBodyFragment = BodyFragment{
 			body[0].X,
 			body[0].Y - 1,
 		}
-	case MoveBottom:
+	case MoveDown:
 		newBodyFragment = BodyFragment{
 			body[0].X,
 			body[0].Y + 1,
