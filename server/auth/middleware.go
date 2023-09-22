@@ -52,15 +52,17 @@ func GetDataMiddleware(container container.Container) func(next httprouter.Handl
 					panic(err)
 				}
 
-				params = append(params, httprouter.Param{
-					Key:   "account_id",
-					Value: account.ID,
-				})
+				if account != nil {
+					params = append(params, httprouter.Param{
+						Key:   "account_id",
+						Value: account.ID,
+					})
 
-				params = append(params, httprouter.Param{
-					Key:   "account_username",
-					Value: account.UserName,
-				})
+					params = append(params, httprouter.Param{
+						Key:   "account_username",
+						Value: account.UserName,
+					})
+				}
 			}
 
 			next(writer, request, params)

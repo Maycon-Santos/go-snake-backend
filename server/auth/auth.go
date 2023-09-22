@@ -22,7 +22,7 @@ func CompareHashAndPassword(hashedPassword string, password string) error {
 }
 
 func GeneratePasswordHash(password string) (string, error) {
-	encrypted, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	encrypted, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	return string(encrypted), err
 }
 
