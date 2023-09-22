@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS skin_patterns (
 
 CREATE TABLE IF NOT EXISTS account_skin (
 	id SERIAL PRIMARY KEY,
-	account INT REFERENCES accounts(id),
+	account INT UNIQUE REFERENCES accounts(id),
 	color INT REFERENCES skin_colors(id),
 	pattern INT REFERENCES skin_patterns(id)
 );
