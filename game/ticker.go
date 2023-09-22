@@ -60,13 +60,14 @@ func (gt *gameTicker) start() {
 
 func (gt *gameTicker) OnTick(fn func(), layer uint) {
 	gt.dataSync.Lock()
-	defer gt.dataSync.Unlock()
 
 	if gt.ticks[layer] == nil {
 		gt.ticks[layer] = make([]func(), 0)
 	}
 
 	gt.ticks[layer] = append(gt.ticks[layer], fn)
+
+	gt.dataSync.Unlock()
 }
 
 func (gt *gameTicker) Stop() {

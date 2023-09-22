@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Maycon-Santos/go-snake-backend/internal/projectpath"
+	"github.com/Maycon-Santos/go-snake-backend/projectpath"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )

@@ -23,21 +23,28 @@ type Match interface {
 	GetPlayerByID(id string) *Player
 	GetFoods() []Food
 	Enter(player Player) error
+	RemovePlayer(player Player)
 	OnStart(fn func())
 	Ready()
+	Unready()
 	MatchState
 }
 
 type match struct {
-	ID              string
-	playersLimit    int
-	owner           Player
-	players         []Player
-	foods           []Food
+	ID           string
+	playersLimit int
+
+	owner        Player
+	players      []Player
+	foods        []Food
+	playersReady int
+
 	ticker          GameTicker
 	onStartHandlers []func()
-	onStartSync     sync.Mutex
-	foodsSync       sync.Mutex
+
+	onStartSync sync.Mutex
+	foodsSync   sync.Mutex
+
 	MatchState
 }
 
@@ -54,6 +61,10 @@ func NewMatch(id string, playersLimit int) Match {
 func (m *match) SendMessage(message []byte) (err error) {
 	for _, player := range m.GetPlayers() {
 		err = player.SendMessage(message)
+		if err != nil {
+			// Enviar erros para um chan
+			continue
+		}
 	}
 
 	return
@@ -109,17 +120,37 @@ func (m *match) Enter(player Player) error {
 	return nil
 }
 
-func (m *match) Ready() {
-	everyoneIsReady := true
+func (m *match) RemovePlayer(player Player) {
+	if m.owner == player {
+		m.owner = nil
 
-	for _, player := range m.GetPlayers() {
-		if !player.IsReady() {
-			everyoneIsReady = false
-			break
+		if len(m.players) >= 1 {
+			m.owner = m.players[0]
+			m.players = m.players[1:]
 		}
+
+		return
 	}
 
-	if everyoneIsReady {
+	for i, p := range m.players {
+		if player == p {
+			m.players = append(m.players[:i], m.players[i+1:]...)
+		}
+	}
+}
+
+func (m *match) Unready() {
+	m.playersReady -= 1
+
+	if m.playersReady < 0 {
+		m.playersReady = 0
+	}
+}
+
+func (m *match) Ready() {
+	m.playersReady += 1
+
+	if m.playersReady == len(m.GetPlayers()) {
 		m.UpdateState(MatchStateInput{
 			Status: utils.Ptr(StatusRunning),
 		})
@@ -154,11 +185,15 @@ func (m *match) start() {
 	}
 	m.onStartSync.Unlock()
 
-	for _, player := range m.GetPlayers() {
+	for i, player := range m.GetPlayers() {
+		player := player
+
 		player.UpdateState(PlayerStateInput{
+			IsReady: utils.Ptr(false),
 			IsAlive: utils.Ptr(true),
-			Body:    []BodyFragment{{X: 2, Y: 0}, {X: 1, Y: 0}, {X: 0, Y: 0}},
 		})
+
+		player.GenerateInitialBody(i)
 
 		m.ticker.OnTick(func() {
 			player.OpenBatch()

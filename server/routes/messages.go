@@ -45,9 +45,10 @@ type foodMessage struct {
 }
 
 type message struct {
-	MatchData *matchMessage  `json:"match,omitempty"`
-	Player    *playerMessage `json:"player,omitempty"`
-	Food      *foodMessage   `json:"food,omitempty"`
+	MatchData    *matchMessage  `json:"match,omitempty"`
+	Player       *playerMessage `json:"player,omitempty"`
+	RemovePlayer string         `json:"removePlayer,omitempty"`
+	Food         *foodMessage   `json:"food,omitempty"`
 }
 
 func parseMatchMessage(match game.Match) ([]byte, error) {
@@ -90,6 +91,19 @@ func parsePlayerMessage(player game.Player) ([]byte, error) {
 			X: fragment.X,
 			Y: fragment.Y,
 		})
+	}
+
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return msgBytes, nil
+}
+
+func parseRemovePlayer(player game.Player) ([]byte, error) {
+	msg := message{
+		RemovePlayer: player.GetID(),
 	}
 
 	msgBytes, err := json.Marshal(msg)

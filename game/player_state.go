@@ -26,9 +26,11 @@ type playerState struct {
 	isReady          bool
 	body             []BodyFragment
 	onUpdateHandlers []func()
-	sync             sync.Mutex
-	isBatching       bool
-	onCloseBatch     func()
+
+	sync sync.Mutex
+
+	isBatching   bool
+	onCloseBatch func()
 }
 
 type PlayerStateInput struct {

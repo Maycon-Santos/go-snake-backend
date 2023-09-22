@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/Maycon-Santos/go-snake-backend/uuid"
 )
@@ -16,6 +17,7 @@ type Matches interface {
 
 type matches struct {
 	matches map[string]Match
+	sync    sync.Mutex
 }
 
 func NewMatches() Matches {
@@ -24,7 +26,7 @@ func NewMatches() Matches {
 	}
 }
 
-func (r matches) Add(playersLimit int) (Match, error) {
+func (m *matches) Add(playersLimit int) (Match, error) {
 	id, err := uuid.Generate()
 	if err != nil {
 		return nil, err
@@ -34,21 +36,27 @@ func (r matches) Add(playersLimit int) (Match, error) {
 
 	match := NewMatch(idStr, playersLimit)
 
-	r.matches[idStr] = match
+	m.matches[idStr] = match
 
 	return match, nil
 }
 
-func (r matches) GetMatchByID(id string) (Match, error) {
-	if match, ok := r.matches[id]; ok {
+func (m *matches) GetMatchByID(id string) (Match, error) {
+	m.sync.Lock()
+	defer m.sync.Unlock()
+
+	if match, ok := m.matches[id]; ok {
 		return match, nil
 	}
 
 	return nil, fmt.Errorf("matches: There is no match with id %s", id)
 }
 
-func (r matches) GetMatchByOwnerID(ownerID string) (Match, error) {
-	for _, match := range r.matches {
+func (m *matches) GetMatchByOwnerID(ownerID string) (Match, error) {
+	m.sync.Lock()
+	defer m.sync.Unlock()
+
+	for _, match := range m.matches {
 		owner := match.GetOwner()
 
 		if owner == nil {
@@ -63,6 +71,9 @@ func (r matches) GetMatchByOwnerID(ownerID string) (Match, error) {
 	return nil, fmt.Errorf("matches: There is no match with id %s owner", ownerID)
 }
 
-func (r matches) DeleteByID(id string) {
-	delete(r.matches, id)
+func (m *matches) DeleteByID(id string) {
+	m.sync.Lock()
+	defer m.sync.Unlock()
+
+	delete(m.matches, id)
 }

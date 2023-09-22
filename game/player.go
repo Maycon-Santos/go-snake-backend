@@ -2,10 +2,12 @@ package game
 
 import (
 	"encoding/json"
+	"math"
 	"sync"
 
 	"github.com/Maycon-Santos/go-snake-backend/utils"
 	"github.com/gorilla/websocket"
+	"golang.org/x/exp/slices"
 )
 
 type Player interface {
@@ -18,6 +20,7 @@ type Player interface {
 	DieOnPlayerCollision()
 	GetID() string
 	GetName() string
+	GenerateInitialBody(n int)
 	Move()
 	TeleportCornerScreen()
 	PlayerState
@@ -59,6 +62,11 @@ const (
 	MoveRight
 )
 
+var (
+	horizontalMovements = []movement{MoveLeft, MoveRight}
+	VerticalMovements   = []movement{MoveUp, MoveDown}
+)
+
 func NewPlayer(id, name string) Player {
 	return &player{
 		id:          id,
@@ -69,6 +77,9 @@ func NewPlayer(id, name string) Player {
 }
 
 func (p *player) SetSocket(socket *websocket.Conn) {
+	p.sendMessageSync.Lock()
+	defer p.sendMessageSync.Unlock()
+
 	p.socket = socket
 	p.startListening()
 }
@@ -76,18 +87,16 @@ func (p *player) SetSocket(socket *websocket.Conn) {
 func (p *player) startListening() {
 	go (func() {
 		for {
-			messageType, messageBytes, err := p.socket.ReadMessage()
+			messageType, reader, err := p.socket.NextReader()
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					// Enviar erros para um chan
-					return
-				}
+				// Enviar erros para um chan
+				return
 			}
 
 			if messageType == websocket.TextMessage {
 				message := WrittenMessage{}
 
-				err = json.Unmarshal(messageBytes, &message)
+				err = json.NewDecoder(reader).Decode(&message)
 				if err != nil {
 					// Enviar erros para um chan
 					return
@@ -114,10 +123,14 @@ func (p *player) readMessages(message WrittenMessage) {
 	if p.match.GetStatus() == StatusOnHold {
 		if message.Ready != nil && *message.Ready {
 			p.UpdateState(PlayerStateInput{
-				IsReady: utils.Ptr(true),
+				IsReady: message.Ready,
 			})
 
-			p.match.Ready()
+			if *message.Ready {
+				p.match.Ready()
+			} else {
+				p.match.Unready()
+			}
 		}
 	}
 }
@@ -133,7 +146,10 @@ func (p *player) SendMessage(message []byte) error {
 		return err
 	}
 
-	if _, err = writer.Write(message); err != nil {
+	defer writer.Close()
+
+	_, err = writer.Write(message)
+	if err != nil {
 		return err
 	}
 
@@ -155,6 +171,19 @@ func (p *player) GetName() string {
 func (p *player) AddMovement(mv movement) {
 	p.movementSync.Lock()
 	defer p.movementSync.Unlock()
+
+	nextMovement := p.moving
+	if len(p.movements) > 0 {
+		nextMovement = p.movements[0]
+	}
+
+	if slices.Contains(horizontalMovements, nextMovement) && slices.Contains(horizontalMovements, mv) {
+		return
+	}
+
+	if slices.Contains(VerticalMovements, nextMovement) && slices.Contains(VerticalMovements, mv) {
+		return
+	}
 
 	p.movements = append(p.movements, mv)
 }
@@ -283,4 +312,20 @@ func (p *player) DieOnPlayerCollision() {
 			}
 		}
 	}
+}
+
+func (p *player) GenerateInitialBody(n int) {
+	xMultiplier := (n % 3) + 1
+	yMultiplier := math.Ceil(float64(n+1) / 3)
+
+	xBodyStart := int(16 * xMultiplier)
+	yBodyStart := int(9 * yMultiplier)
+
+	p.UpdateState(PlayerStateInput{
+		Body: []BodyFragment{
+			{X: xBodyStart, Y: yBodyStart},
+			{X: xBodyStart - 1, Y: yBodyStart},
+			{X: xBodyStart - 2, Y: yBodyStart},
+		},
+	})
 }
