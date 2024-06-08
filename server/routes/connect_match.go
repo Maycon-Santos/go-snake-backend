@@ -5,15 +5,19 @@ import (
 	"net/http"
 
 	"github.com/Maycon-Santos/go-snake-backend/container"
+	"github.com/Maycon-Santos/go-snake-backend/db"
 	"github.com/Maycon-Santos/go-snake-backend/game"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 )
 
 func ConnectMatch(container container.Container) httprouter.Handle {
-	var matches game.Matches
+	var (
+		matches         game.Matches
+		skinsRepository db.SkinsRepository
+	)
 
-	err := container.Retrieve(&matches)
+	err := container.Retrieve(&matches, &skinsRepository)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,7 +35,7 @@ func ConnectMatch(container container.Container) httprouter.Handle {
 				},
 				Body: responseBody{
 					Success: false,
-					Type:    TYPE_ROOM_NOT_FOUND,
+					Type:    TYPE_MATCH_NOT_FOUND,
 					Message: "room not found",
 				},
 			})
@@ -140,6 +144,38 @@ func ConnectMatch(container container.Container) httprouter.Handle {
 					if err = player.SendMessage(currentPlayerMessageBytes); err != nil {
 						handleError(request.Context(), err)
 					}
+				}
+			}
+		}
+
+		for _, player := range match.GetPlayers() {
+			currentPlayerSkin, err := skinsRepository.GetAccountSkin(request.Context(), currentPlayer.GetID())
+			if err != nil {
+				handleError(request.Context(), err)
+			}
+
+			currentPlayerSkinMessageBytes, err := parsePlayerSkin(currentPlayer, *currentPlayerSkin)
+			if err != nil {
+				handleError(request.Context(), err)
+			}
+
+			playerSkin, err := skinsRepository.GetAccountSkin(request.Context(), player.GetID())
+			if err != nil {
+				handleError(request.Context(), err)
+			}
+
+			playerSkinMessageBytes, err := parsePlayerSkin(player, *playerSkin)
+			if err != nil {
+				handleError(request.Context(), err)
+			}
+
+			if err = currentPlayer.SendMessage(playerSkinMessageBytes); err != nil {
+				handleError(request.Context(), err)
+			}
+
+			if player.GetID() != currentPlayer.GetID() {
+				if err = player.SendMessage(currentPlayerSkinMessageBytes); err != nil {
+					handleError(request.Context(), err)
 				}
 			}
 		}

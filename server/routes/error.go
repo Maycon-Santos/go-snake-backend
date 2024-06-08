@@ -2,10 +2,10 @@ package routes
 
 import (
 	"context"
-	"fmt"
+	"log"
 )
 
 func handleError(ctx context.Context, err error) {
 	// WIP
-	fmt.Println(err)
+	log.Println(err)
 }

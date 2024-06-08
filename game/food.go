@@ -48,11 +48,11 @@ func (f *food) Summon() {
 
 func (f *food) CheckWasEaten() {
 	for _, player := range f.match.GetPlayers() {
-		head := player.GetBody()[0]
-
 		if !player.IsAlive() {
 			continue
 		}
+
+		head := player.GetBody()[0]
 
 		if head.X != f.position.X {
 			continue

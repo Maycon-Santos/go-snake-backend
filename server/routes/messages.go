@@ -3,6 +3,7 @@ package routes
 import (
 	"encoding/json"
 
+	"github.com/Maycon-Santos/go-snake-backend/db"
 	"github.com/Maycon-Santos/go-snake-backend/game"
 )
 
@@ -34,6 +35,12 @@ type playerMessage struct {
 	Alive    bool                  `json:"alive"`
 }
 
+type playerSkinMessage struct {
+	PlayerId string `json:"playerId"`
+	Color    string `json:"color"`
+	Pattern  string `json:"pattern"`
+}
+
 type foodPositionMessage struct {
 	X int `json:"x"`
 	Y int `json:"y"`
@@ -45,10 +52,11 @@ type foodMessage struct {
 }
 
 type message struct {
-	MatchData    *matchMessage  `json:"match,omitempty"`
-	Player       *playerMessage `json:"player,omitempty"`
-	RemovePlayer string         `json:"removePlayer,omitempty"`
-	Food         *foodMessage   `json:"food,omitempty"`
+	MatchData    *matchMessage      `json:"match,omitempty"`
+	Player       *playerMessage     `json:"player,omitempty"`
+	PlayerSkin   *playerSkinMessage `json:"playerSkin,omitempty"`
+	RemovePlayer string             `json:"removePlayer,omitempty"`
+	Food         *foodMessage       `json:"food,omitempty"`
 }
 
 func parseMatchMessage(match game.Match) ([]byte, error) {
@@ -91,6 +99,23 @@ func parsePlayerMessage(player game.Player) ([]byte, error) {
 			X: fragment.X,
 			Y: fragment.Y,
 		})
+	}
+
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return msgBytes, nil
+}
+
+func parsePlayerSkin(player game.Player, skin db.Skin) ([]byte, error) {
+	msg := message{
+		PlayerSkin: &playerSkinMessage{
+			PlayerId: player.GetID(),
+			Color:    skin.ColorID,
+			Pattern:  skin.PatternID,
+		},
 	}
 
 	msgBytes, err := json.Marshal(msg)

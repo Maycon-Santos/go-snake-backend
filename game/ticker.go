@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -13,10 +14,10 @@ type GameTicker interface {
 }
 
 type gameTicker struct {
-	ticker   *time.Ticker
-	done     chan bool
-	ticks    map[uint][]func()
-	dataSync sync.Mutex
+	ticker *time.Ticker
+	done   chan bool
+	ticks  map[uint][]func()
+	sync   sync.Mutex
 }
 
 func NewTicker() GameTicker {
@@ -35,9 +36,10 @@ func (gt *gameTicker) start() {
 		for {
 			select {
 			case <-gt.done:
+				fmt.Println("done")
 				return
 			case <-gt.ticker.C:
-				gt.dataSync.Lock()
+				gt.sync.Lock()
 
 				keys := make([]uint, 0)
 				for k := range gt.ticks {
@@ -52,14 +54,14 @@ func (gt *gameTicker) start() {
 					}
 				}
 
-				gt.dataSync.Unlock()
+				gt.sync.Unlock()
 			}
 		}
 	}()
 }
 
 func (gt *gameTicker) OnTick(fn func(), layer uint) {
-	gt.dataSync.Lock()
+	gt.sync.Lock()
 
 	if gt.ticks[layer] == nil {
 		gt.ticks[layer] = make([]func(), 0)
@@ -67,17 +69,16 @@ func (gt *gameTicker) OnTick(fn func(), layer uint) {
 
 	gt.ticks[layer] = append(gt.ticks[layer], fn)
 
-	gt.dataSync.Unlock()
+	gt.sync.Unlock()
 }
 
 func (gt *gameTicker) Stop() {
 	gt.ticker.Stop()
+	gt.done <- true
 }
 
 func (gt *gameTicker) Reset() {
-	gt.dataSync.Lock()
-	gt.ticks = map[uint][]func(){}
-	gt.done <- true
-	gt.dataSync.Unlock()
-	gt.start()
+	gt.sync.Lock()
+	gt.ticks = make(map[uint][]func())
+	gt.sync.Unlock()
 }

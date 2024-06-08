@@ -62,6 +62,7 @@ func (ps *playerState) CloseBatch() {
 
 	if ps.onCloseBatch != nil {
 		ps.onCloseBatch()
+		ps.onCloseBatch = nil
 	}
 }
 

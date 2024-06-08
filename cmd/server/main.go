@@ -26,6 +26,8 @@ func main() {
 	defer dbConn.Close()
 
 	accountsRepository := db.NewAccountsRepository(dbConn)
+	skinsRepository := db.NewSkinsRepository(dbConn)
+
 	cacheClient, err := cache.NewClient(context.Background(), env.RedisAddress)
 	if err != nil {
 		log.Fatal(err)
@@ -38,6 +40,7 @@ func main() {
 		env,
 		&cacheClient,
 		&accountsRepository,
+		&skinsRepository,
 		&matches,
 	)
 	if err != nil {

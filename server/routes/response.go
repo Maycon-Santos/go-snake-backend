@@ -42,7 +42,10 @@ const (
 	TYPE_PASSWORD_BELOW_MIN_LEN = responseType("PASSWORD_BELOW_MIN_LEN")
 	TYPE_PASSWORD_ABOVE_MAX_LEN = responseType("PASSWORD_ABOVE_MAX_LEN")
 
-	TYPE_ROOM_NOT_FOUND = responseType("ROOM_NOT_FOUND")
+	TYPE_COLOR_NOT_AVAILABLE   = responseType("COLOR_NOT_AVAILABLE")
+	TYPE_PATTERN_NOT_AVAILABLE = responseType("PATTERN_NOT_AVAILABLE")
+
+	TYPE_MATCH_NOT_FOUND = responseType("MATCH_NOT_FOUND")
 )
 
 func makeResponse(ctx context.Context, writer http.ResponseWriter, response responseConfig) error {

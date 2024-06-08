@@ -11,6 +11,7 @@ import (
 )
 
 type Player interface {
+	Reset()
 	AddMovement(mv movement)
 	SendMessage(message []byte) error
 	SetMatch(room Match)
@@ -23,6 +24,7 @@ type Player interface {
 	GenerateInitialBody(n int)
 	Move()
 	TeleportCornerScreen()
+	OnDie(fn func())
 	PlayerState
 }
 
@@ -37,6 +39,8 @@ type player struct {
 
 	messageListeners []messageListener
 	sendMessageSync  sync.Mutex
+
+	onDieHandlers []func()
 
 	toIncrease uint
 
@@ -82,6 +86,14 @@ func (p *player) SetSocket(socket *websocket.Conn) {
 
 	p.socket = socket
 	p.startListening()
+}
+
+func (p *player) Reset() {
+	p.moving = MoveRight
+	p.movements = make([]movement, 0)
+	p.UpdateState(PlayerStateInput{
+		Body: nil,
+	})
 }
 
 func (p *player) startListening() {
@@ -285,6 +297,10 @@ func (p *player) Increase() {
 	}
 }
 
+func (p *player) OnDie(fn func()) {
+	p.onDieHandlers = append(p.onDieHandlers, fn)
+}
+
 func (p *player) DieOnPlayerCollision() {
 	if !p.IsAlive() {
 		return
@@ -309,6 +325,10 @@ func (p *player) DieOnPlayerCollision() {
 				p.UpdateState(PlayerStateInput{
 					IsAlive: utils.Ptr(false),
 				})
+
+				for _, fn := range p.onDieHandlers {
+					fn()
+				}
 			}
 		}
 	}

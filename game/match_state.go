@@ -93,5 +93,6 @@ func (ms *matchState) GetFoodsLimit() int {
 }
 
 func (ms *matchState) GetStatus() matchStatus {
-	return ms.status
+	status := ms.status
+	return status
 }

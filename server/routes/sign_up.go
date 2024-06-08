@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net/http"
 
 	"github.com/Maycon-Santos/go-snake-backend/cache"
@@ -26,9 +27,10 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		env                process.Env
 		cache              cache.Client
 		accountsRepository db.AccountsRepository
+		skinsRepository    db.SkinsRepository
 	)
 
-	container.Retrieve(&env, &cache, &accountsRepository)
+	container.Retrieve(&env, &cache, &accountsRepository, &skinsRepository)
 
 	return func(writer http.ResponseWriter, request *http.Request, _ httprouter.Params) {
 		var requestBody signUpRequestBody
@@ -106,6 +108,30 @@ func SignUpHandler(container container.Container) httprouter.Handle {
 		if err != nil {
 			handleError(request.Context(), err)
 			return
+		}
+
+		colors, errColors := skinsRepository.GetAllColors(request.Context())
+		if errColors != nil {
+			handleError(request.Context(), errColors)
+		}
+
+		patterns, errPatterns := skinsRepository.GetAllPatterns(request.Context())
+		if errPatterns != nil {
+			handleError(request.Context(), errPatterns)
+			return
+		}
+
+		if errColors == nil && errPatterns == nil {
+			err = skinsRepository.SetAccountSkin(
+				request.Context(),
+				accountID,
+				colors[rand.Intn(len(colors)-1)].ID,
+				patterns[rand.Intn(len(patterns)-1)].ID,
+			)
+			if err != nil {
+				handleError(request.Context(), err)
+				return
+			}
 		}
 
 		token, err := auth.CreateToken(

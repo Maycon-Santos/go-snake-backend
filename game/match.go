@@ -188,12 +188,24 @@ func (m *match) start() {
 	for i, player := range m.GetPlayers() {
 		player := player
 
+		player.OnDie(func() {
+			for _, p := range m.GetPlayers() {
+				if p.IsAlive() {
+					return
+				}
+			}
+
+			m.end()
+		})
+
 		player.UpdateState(PlayerStateInput{
 			IsReady: utils.Ptr(false),
 			IsAlive: utils.Ptr(true),
 		})
 
 		player.GenerateInitialBody(i)
+
+		m.playersReady = 0
 
 		m.ticker.OnTick(func() {
 			player.OpenBatch()
@@ -211,5 +223,17 @@ func (m *match) start() {
 	for _, food := range m.foods {
 		food.Summon()
 		m.ticker.OnTick(food.CheckWasEaten, 1)
+	}
+}
+
+func (m *match) end() {
+	m.UpdateState(MatchStateInput{
+		Status: utils.Ptr(StatusOnHold),
+	})
+
+	m.foods = make([]Food, 0)
+
+	for _, player := range m.GetPlayers() {
+		player.Reset()
 	}
 }
